@@ -139,7 +139,8 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
   </fieldset>
   <fieldset>
     <legend>Kitchen</legend>
-    <div class="f"><label for="room">Room temp</label><div class="num"><input id="room" type="number" step="1" value="74"><i class="tu">°F</i></div></div>
+    <div class="f"><label for="room">Room temp<small>where you mix</small></label><div class="num"><input id="room" type="number" step="1" value="74"><i class="tu">°F</i></div></div>
+    <div class="f"><label for="box">Proofing box<small>leave blank if not using one</small></label><div class="num"><input id="box" type="number" step="1" placeholder="off"><i class="tu">°F</i></div></div>
     <div class="f"><label for="flourT">Flour temp</label><div class="num"><input id="flourT" type="number" step="1" value="72"><i class="tu">°F</i></div></div>
     <div class="f"><label for="ddt">Target dough temp</label><div class="num"><input id="ddt" type="number" step="1" value="78"><i class="tu">°F</i></div></div>
     <div class="f"><label for="mixer">Mixing</label><div class="num"><select id="mixer"><option value="hand">By hand</option><option value="mixer">Stand mixer</option></select></div></div>
@@ -256,7 +257,9 @@ function calc(){
   // Levain build
   const need=lev*1.1+15, rsum=rs+rf+rw, seed=need*rs/rsum, nf=need*rf/rsum, nw=need*rw/rsum;
   const roomC=toC(val('room'));
-  const tf=Math.pow(2,(24-roomC)/8);
+  const useBox=$('box').value.trim()!=='';
+  const fermC=useBox?toC(val('box')):roomC;
+  const tf=Math.pow(2,(24-fermC)/8);
   const peak=clamp((4+2.2*Math.log2(Math.max(1,rf/rs)))*tf,2,24);
   const rt=v=>r1(v).replace(/\.0$/,'');
   $('levKv').innerHTML=`<dt>Ratio</dt><dd>${rt(rs)} : ${rt(rf)} : ${rt(rw)}</dd><dt>Ripe starter</dt><dd>${g(seed)}</dd><dt>New flour</dt><dd>${g(nf)}</dd><dt>New water</dt><dd>${g(nw)}</dd><dt>Build makes</dt><dd>${g(need)}</dd><dt>Levain hydration</dt><dd>${Math.round(LH*100)}%</dd><dt>Peaks in about</dt><dd class="hl">${hrs(peak)}</dd>`+
@@ -271,7 +274,7 @@ function calc(){
    (waterC<2?`<dt style="grid-column:1/-1;color:var(--warn)">You'd need ice water. Chill the flour or mix with ice cubes, and expect a warm bulk.</dt>`:waterC>40?`<dt style="grid-column:1/-1;color:var(--warn)">Water this hot can stress the levain. Cap it near ${unit==='F'?'100°F':'38°C'} and proof somewhere warm.</dt>`:'');
 
   // Bulk estimate (at dough temp)
-  const doughC=(roomC*2+ddtC)/3;
+  const doughC=useBox?(fermC*3+ddtC)/4:(roomC*2+ddtC)/3;
   const bulk=clamp(5*Math.pow(2,(24-doughC)/8)*Math.pow(0.2/Math.max(L,.02),0.45)*(1-0.15*WG),2,18);
   const rise=doughC>=26?'30–50%':doughC>=24?'50%':doughC>=22?'50–75%':'75–100%';
 
@@ -309,8 +312,9 @@ function calc(){
   else if(sp>2.4) warn('High salt',`${r1(sp)}% will slow fermentation and taste salty. Try 2.0–2.2%.`);
   if(lp>=30&&doughC>=25) warn('Fast fermentation',`${lp}% levain at about ${Math.round(fromC(doughC))}°${unit} moves quickly. Drop levain to 10–15% or use cooler water so bulk doesn't overshoot.`);
   if(lp<=10&&doughC<22) warn('Long, slow bulk',`Low levain in a cool kitchen means bulk may run past ${hrs(bulk)}. Raise levain to 15–20% or find a warmer spot (oven with the light on).`);
-  if(roomC<20) warn('Cool kitchen',`At ${Math.round(val('room'))}°${unit}, aim for the warmer side of your target dough temp and judge bulk by rise, not time.`);
-  if(roomC>27) warn('Warm kitchen',`Use cold water and check the dough early. Aim for only ${rise} rise before shaping.`);
+  if(fermC<20) warn(useBox?'Cool proofing box':'Cool kitchen',`At ${Math.round(fromC(fermC))}°${unit}, aim for the warmer side of your target dough temp and judge bulk by rise, not time.`);
+  if(fermC>27) warn(useBox?'Warm proofing box':'Warm kitchen',`Use cold water and check the dough early. Aim for only ${rise} rise before shaping.`);
+  if(useBox) ok('Proofing box',`Bulk and levain times assume the box at ${Math.round(fromC(fermC))}°${unit}. Setting it to your target dough temp (${Math.round(val('ddt'))}°${unit}) keeps the dough steady through bulk. Water temperature still uses your room temp, since that's where you mix.`);
   if(wp>=60) ok('High whole grain','Rye- and whole-wheat-heavy doughs have less gluten. Shape gently, expect a tighter crumb, and consider a loaf pan above 70% rye.');
   ok('Bulk target',`Aim for ${rise} rise in a straight-sided container. Warmer dough should rise less before shaping because it keeps going in the fridge longer.`);
   if(Math.abs(LH-1)>.05) ok(LH<1?'Stiff levain':'Liquid levain',`This build makes a ${Math.round(LH*100)}% hydration levain, and the dough water above already accounts for it. ${LH<.8?'Stiff levains favor acetic tang and a slower, steadier rise.':LH<1?'Slightly stiff levains hold their peak a little longer.':'Wet levains ferment faster and taste milder.'}`);
@@ -320,12 +324,12 @@ function calc(){
   save();
 }
 
-const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','sh','room','flourT','ddt','mixer','mixAt','r2','r3'];
+const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3'];
 function save(){try{const o={unit,anchor};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW'}catch(e){}}
 
 function setUnit(u,convert=true){
-  if(convert&&u!==unit){['room','flourT','ddt'].forEach(i=>{const v=val(i);$(i).value=Math.round(u==='F'?cToF(v):fToC(v))})}
+  if(convert&&u!==unit){['room','box','flourT','ddt'].forEach(i=>{if($(i).value.trim()==='')return;const v=val(i);$(i).value=Math.round(u==='F'?cToF(v):fToC(v))})}
   unit=u;$('uC').setAttribute('aria-pressed',u==='C');$('uF').setAttribute('aria-pressed',u==='F');
   document.querySelectorAll('.tu').forEach(e=>e.textContent='°'+u);
 }
