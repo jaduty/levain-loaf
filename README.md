@@ -1,4 +1,4 @@
-# Levain & Loaf
+# Andy's Levain & Loaf
 
 A sourdough calculator that runs in the browser. It has no install, no account and no server, just one `index.html` file.
 
