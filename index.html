@@ -131,7 +131,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
   </fieldset>
   <fieldset>
     <legend>Formula (% of total flour)</legend>
-    <div class="f"><label for="ftype">White flour<small>shifts the hydration range</small></label><div class="num"><select id="ftype"><option value="bread">Bread</option><option value="ap">All-purpose</option><option value="ka">AP, King Arthur</option><option value="custom">Custom protein</option></select></div></div>
+    <div class="f wide"><label for="ftype">White flour<small>shifts the hydration range</small></label><div class="num" style="width:170px"><select id="ftype"><option value="bread">Bread, King Arthur (12.7%)</option><option value="bread2">Bread, other brands (~12%)</option><option value="ka">AP, King Arthur (11.7%)</option><option value="ap">AP, other brands (~10.5%)</option><option value="custom">Custom protein</option></select></div></div>
     <div class="f" id="rowProt" hidden><label for="prot">Protein<small>label protein ÷ serving size</small></label><div class="num"><input id="prot" type="number" min="7" max="16" step="0.1" value="11.5"><i>%</i></div></div>
     <div class="f"><label for="hyd">Hydration<small>total, incl. levain water</small></label><div class="num"><input id="hyd" type="number" min="50" max="100" step="1" value="70"><i>%</i></div></div>
     <div class="f"><label for="lev">Levain</label><div class="num"><input id="lev" type="number" min="2" max="50" step="1" value="20"><i>%</i></div></div>
@@ -230,8 +230,8 @@ function hrs(h){const H=Math.floor(h),M=Math.round((h-H)*60/5)*5;return M===60?(
 function calc(){
   const n=Math.max(1,Math.round(val('loaves')));
   const ft=$('ftype').value;$('rowProt').hidden=ft!=='custom';
-  const prot=ft==='custom'?clamp(val('prot'),7,16):{bread:12.7,ap:10.5,ka:11.7}[ft];
-  const fname={bread:'Bread flour',ap:'All-purpose flour',ka:'All-purpose flour (KA)',custom:`White flour (${r1(prot)}% protein)`}[ft];
+  const prot=ft==='custom'?clamp(val('prot'),7,16):{bread:12.7,bread2:12,ap:10.5,ka:11.7}[ft];
+  const fname={bread:'Bread flour (KA)',bread2:'Bread flour',ap:'All-purpose flour',ka:'All-purpose flour (KA)',custom:`White flour (${r1(prot)}% protein)`}[ft];
   const H=val('hyd')/100,L=val('lev')/100,S=val('salt')/100,WG=clamp(val('wg'),0,100)/100,SH=val('sh')/100;
   const rs=Math.max(.1,val('r1')),rf=Math.max(.1,val('r2')),rw=Math.max(0,val('r3'));
   const sF=rs/(1+SH),LH=(rs-sF+rw)/(sF+rf);
