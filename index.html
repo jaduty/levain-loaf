@@ -73,6 +73,9 @@ td:first-child{font-family:var(--body);font-weight:500}
 td .note{display:block;font:400 12px var(--body);color:var(--muted)}
 tr:last-child td{border-bottom:0}
 tr.step td{background:var(--crust-soft)}
+tr.sum td{font-weight:600;border-top:2px solid var(--line)}
+tr.sum + tr.sum td{border-top:0}
+.barcap{padding:0 20px 16px;margin-top:-8px;font-size:12px;color:var(--muted)}
 .bar{display:flex;height:10px;margin:0 20px 16px;border-radius:999px;overflow:hidden;background:var(--line)}
 .bar i{display:block;height:100%}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:0 20px 16px;font-size:12px;color:var(--muted)}
@@ -170,6 +173,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
       <div style="height:14px"></div>
       <div class="bar" id="bar" aria-hidden="true"></div>
       <div class="legend" id="legend"></div>
+      <p class="barcap">The bar and its labels show each ingredient's share of the total dough weight, so they add up to 100%. For baker's percentages (of total flour), see the table above.</p>
     </div>
   </section>
 
@@ -248,7 +252,9 @@ function calc(){
     ['Levain',lev,L,`${g(levF)} flour + ${g(levW)} water`],
     ['Salt',salt,S,''],
   ].filter(r=>r[1]>0.5||r[0]==='Salt');
-  $('tbody').innerHTML=rows.map(r=>`<tr${r[0]==='Levain'?' class="step"':''}><td>${r[0]}${r[3]?`<span class="note">${r[3]}</span>`:''}</td><td>${g(r[1])}</td><td>${g(r[1]/n)}</td><td>${r1(r[2]*100)}%</td></tr>`).join('');
+  $('tbody').innerHTML=rows.map(r=>`<tr${r[0]==='Levain'?' class="step"':''}><td>${r[0]}${r[3]?`<span class="note">${r[3]}</span>`:''}</td><td>${g(r[1])}</td><td>${g(r[1]/n)}</td><td>${r1(r[2]*100)}%</td></tr>`).join('')+
+    `<tr class="sum"><td>Total flour<span class="note">added + ${g(levF)} in the levain</span></td><td>${g(F)}</td><td>${g(F/n)}</td><td>100%</td></tr>`+
+    `<tr class="sum"><td>Total water<span class="note">added + ${g(levW)} in the levain = hydration</span></td><td>${g(W)}</td><td>${g(W/n)}</td><td>${r1(H*100)}%</td></tr>`;
   const parts=[['White flour',whiteF,'var(--muted)'],['Whole grain',wgF,'var(--rye)'],['Water',mixW,'#5b8fb0'],['Levain',lev,'var(--crust)'],['Salt',salt,'var(--ink)']].filter(p=>p[1]>0.5);
   $('bar').innerHTML=parts.map(p=>`<i style="width:${p[1]/total*100}%;background:${p[2]}"></i>`).join('');
   $('legend').innerHTML=parts.map(p=>`<span style="--c:${p[2]}">${p[0]} ${Math.round(p[1]/total*100)}%</span>`).join('');
