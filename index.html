@@ -88,6 +88,9 @@ tr.sum + tr.sum td{border-top:0}
 .ratio .num{width:46px}
 .ratio .num input{text-align:center;padding:7px 4px}
 .hint{grid-column:1/-1;margin-top:-6px;text-align:right;font:400 12px var(--mono);color:var(--muted)}
+.addrow{grid-template-columns:1fr 104px}
+.hint:empty{display:none}
+tr.addin td{background:var(--ok-soft)}
 .kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-variant-numeric:tabular-nums}
 .kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--mono);text-align:right}
 .kv .hl{color:var(--crust);font-weight:500}
@@ -127,7 +130,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     <div class="f"><label for="loaves">Loaves</label><div class="num"><input id="loaves" type="number" min="1" step="1" value="2"></div></div>
     <div class="f"><label for="addF">Added flour<small>what goes in the bowl, not the levain's</small></label><div class="num"><input id="addF" class="size" type="number" min="0" step="10" value="900"><i>g</i></div></div>
     <div class="f"><label for="totF">Total flour<small>added flour + flour in the levain</small></label><div class="num"><input id="totF" class="size" type="number" min="0" step="10" value="1000"><i>g</i></div></div>
-    <div class="f"><label for="doughW">Dough weight<small>all loaves</small></label><div class="num"><input id="doughW" class="size" type="number" min="0" step="25" value="1720"><i>g</i></div><span class="hint" id="perLoaf"></span></div>
+    <div class="f"><label for="doughW">Dough weight<small>all loaves, before add-ins</small></label><div class="num"><input id="doughW" class="size" type="number" min="0" step="25" value="1720"><i>g</i></div><span class="hint" id="perLoaf"></span></div>
   </fieldset>
   <fieldset>
     <legend>Formula (% of total flour)</legend>
@@ -139,6 +142,13 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     <div class="f"><label for="salt">Salt</label><div class="num"><input id="salt" type="number" min="0" max="4" step="0.1" value="2"><i>%</i></div></div>
     <div class="f"><label for="wg">Whole grain<small>whole wheat, rye, spelt</small></label><div class="num"><input id="wg" type="number" min="0" max="100" step="5" value="20"><i>%</i></div></div>
     <div class="f"><label for="sh">Starter hydration<small>your starter before the build</small></label><div class="num"><input id="sh" type="number" min="40" max="200" step="5" value="100"><i>%</i></div></div>
+  </fieldset>
+  <fieldset>
+    <legend>Add-ins (% of total flour)</legend>
+    <div class="f wide"><label for="combo">Flavor combo<small>fills the add-ins below</small></label><div class="num" style="width:170px"><select id="combo"><option value="">Pick one…</option><option value="olive">Olive &amp; rosemary</option><option value="garlic">Roasted garlic &amp; herb</option><option value="chedjal">Cheddar jalapeño</option><option value="seeded">Seeded</option><option value="cranwal">Cranberry walnut</option><option value="cinrai">Cinnamon raisin</option><option value="chocor">Chocolate orange</option><option value="clear">Clear add-ins</option></select></div></div>
+    <div class="f addrow" id="ar1"><div class="num"><select id="a1t" aria-label="Add-in 1"><option value="">None</option><optgroup label="Herbs &amp; savory"><option value="dherb">Dried herbs</option><option value="fherb">Fresh herbs</option><option value="garlic">Roasted garlic</option><option value="olive">Olives</option><option value="cheese">Cheese, cubed</option><option value="jalap">Jalapeño</option></optgroup><optgroup label="Seeds &amp; nuts"><option value="seeds">Seeds</option><option value="nuts">Nuts</option></optgroup><optgroup label="Sweet"><option value="fruit">Dried fruit</option><option value="spice">Cinnamon / spice</option><option value="zest">Citrus zest</option><option value="choc">Chocolate</option></optgroup><option value="other">Other</option></select></div><div class="num"><input id="a1p" type="number" min="0" max="100" step="0.5" aria-label="Add-in 1 percent"><i>%</i></div><span class="hint" id="a1h"></span></div>
+    <div class="f addrow" id="ar2" hidden><div class="num"><select id="a2t" aria-label="Add-in 2"><option value="">None</option><optgroup label="Herbs &amp; savory"><option value="dherb">Dried herbs</option><option value="fherb">Fresh herbs</option><option value="garlic">Roasted garlic</option><option value="olive">Olives</option><option value="cheese">Cheese, cubed</option><option value="jalap">Jalapeño</option></optgroup><optgroup label="Seeds &amp; nuts"><option value="seeds">Seeds</option><option value="nuts">Nuts</option></optgroup><optgroup label="Sweet"><option value="fruit">Dried fruit</option><option value="spice">Cinnamon / spice</option><option value="zest">Citrus zest</option><option value="choc">Chocolate</option></optgroup><option value="other">Other</option></select></div><div class="num"><input id="a2p" type="number" min="0" max="100" step="0.5" aria-label="Add-in 2 percent"><i>%</i></div><span class="hint" id="a2h"></span></div>
+    <div class="f addrow" id="ar3" hidden><div class="num"><select id="a3t" aria-label="Add-in 3"><option value="">None</option><optgroup label="Herbs &amp; savory"><option value="dherb">Dried herbs</option><option value="fherb">Fresh herbs</option><option value="garlic">Roasted garlic</option><option value="olive">Olives</option><option value="cheese">Cheese, cubed</option><option value="jalap">Jalapeño</option></optgroup><optgroup label="Seeds &amp; nuts"><option value="seeds">Seeds</option><option value="nuts">Nuts</option></optgroup><optgroup label="Sweet"><option value="fruit">Dried fruit</option><option value="spice">Cinnamon / spice</option><option value="zest">Citrus zest</option><option value="choc">Chocolate</option></optgroup><option value="other">Other</option></select></div><div class="num"><input id="a3p" type="number" min="0" max="100" step="0.5" aria-label="Add-in 3 percent"><i>%</i></div><span class="hint" id="a3h"></span></div>
   </fieldset>
   <fieldset>
     <legend>Kitchen</legend>
@@ -223,6 +233,36 @@ const presets={
   rye:{hyd:88,lev:30,salt:1.9,wg:70,sh:100}
 };
 
+
+const ADD={
+  dherb:{n:'Dried herbs',d:1.5,lo:1,hi:2,mix:1,tip:'Rosemary, thyme or oregano. Crumble them in with the salt.'},
+  fherb:{n:'Fresh herbs',d:3,lo:2,hi:5,tip:'Chop fine and pat dry. Rosemary is strong, so 1–2% is plenty.'},
+  garlic:{n:'Roasted garlic',d:8,lo:5,hi:12,slow:1,tip:'Roast whole heads, squeeze out the cloves and leave them in chunks.'},
+  olive:{n:'Olives',d:20,lo:15,hi:25,salty:1,wet:1,tip:'Pit, halve and pat them very dry.'},
+  cheese:{n:'Cheese',d:20,lo:15,hi:25,salty:1,burn:1,tip:'Cut cheddar, gruyère or parmesan into ½-inch cubes. Cubes melt into pockets; grated cheese disappears into the crumb.'},
+  jalap:{n:'Jalapeño',d:8,lo:5,hi:10,wet:1,tip:'Seed and dice. Drain pickled ones and pat them dry.'},
+  seeds:{n:'Seeds',d:10,lo:5,hi:15,soak:1,tip:'Toast sesame, sunflower, pumpkin or flax, then soak in an equal weight of water (twice the weight for flax) for at least 1 hour.'},
+  nuts:{n:'Nuts',d:15,lo:10,hi:20,tip:'Toast walnuts or pecans and chop them roughly.'},
+  fruit:{n:'Dried fruit',d:20,lo:15,hi:25,soak:1,burn:1,tip:'Soak raisins or cranberries in warm water for 20–30 minutes, then drain and pat dry so they don\'t pull water from the dough.'},
+  spice:{n:'Cinnamon / spice',d:1,lo:0.5,hi:2,mix:1,slow:1,tip:'Cinnamon slows yeast, so keep it at 2% or less. For a swirl, sprinkle it on during shaping instead.'},
+  zest:{n:'Citrus zest',d:0.5,lo:0.3,hi:1,mix:1,tip:'One lemon or orange gives about 3–5 g of zest.'},
+  choc:{n:'Chocolate',d:15,lo:10,hi:20,burn:1,tip:'Use chips or chopped dark chocolate.'},
+  other:{n:'Other add-in',d:10,lo:0,hi:100,tip:''}
+};
+const COMBO={olive:[['olive',20],['fherb',2]],garlic:[['garlic',8],['dherb',1.5]],chedjal:[['cheese',20],['jalap',8]],
+  seeded:[['seeds',12]],cranwal:[['fruit',15],['nuts',15]],cinrai:[['fruit',20],['spice',1.5]],chocor:[['choc',15],['zest',0.5]],clear:[]};
+let prevT=['','',''];
+function readAddins(){
+  const out=[];
+  for(let i=1;i<=3;i++){
+    const t=$('a'+i+'t').value;
+    if(t!==prevT[i-1]){$('a'+i+'p').value=t?ADD[t].d:'';prevT[i-1]=t}
+    $('ar'+i).hidden=i>1&&!t&&!$('a'+(i-1)+'t').value;
+    if(t){const pc=Math.max(0,val('a'+i+'p'));out.push({i,t,pc,...ADD[t]})}else{$('a'+i+'h').textContent=''}
+  }
+  return out;
+}
+
 function fmtTime(d){return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}
 function dayTag(d,base){const n=Math.round((new Date(d).setHours(0,0,0,0)-new Date(base).setHours(0,0,0,0))/864e5);return n===0?'':n===1?'next day':n===-1?'day before':(n>0?'+':'')+n+' days'}
 function hrs(h){const H=Math.floor(h),M=Math.round((h-H)*60/5)*5;return M===60?(H+1)+'h':(H?H+'h ':'')+(M?M+'m':'').trim()||'0m'}
@@ -236,6 +276,7 @@ function calc(){
   const rs=Math.max(.1,val('r1')),rf=Math.max(.1,val('r2')),rw=Math.max(0,val('r3'));
   const sF=rs/(1+SH),LH=(rs-sF+rw)/(sF+rf);
   const fa=1-L/(1+LH);
+  const AI=readAddins(),A=AI.reduce((a,x)=>a+x.pc,0)/100;
   let F={addF:val('addF')/fa,totF:val('totF'),doughW:val('doughW')/(1+H+S)}[anchor];
   F=Math.max(F,1);
   const show={addF:F*fa,totF:F,doughW:F*(1+H+S)};
@@ -243,19 +284,21 @@ function calc(){
   const W=H*F,salt=S*F,lev=L*F,levF=lev/(1+LH),levW=lev-levF;
   const mixF=F-levF,mixW=W-levW;
   const wgF=Math.min(WG*F,mixF),whiteF=mixF-wgF;
-  const total=F+W+salt;
-  $('perLoaf').textContent=n>1?`${g(total/n)} per loaf`:'';$('tDough').textContent=g(total);$('tFlour').textContent=g(F);$('tWater').textContent=g(W);
+  const addG=A*F, total=F+W+salt+addG;
+  AI.forEach(x=>{$('a'+x.i+'h').textContent=`${g(x.pc/100*F)} · typical ${x.lo}–${x.hi}%`});
+  $('perLoaf').textContent=addG>0.5?`+ ${g(addG)} add-ins = ${g(total)}${n>1?` · ${g(total/n)} per loaf`:''}`:(n>1?`${g(total/n)} per loaf`:'');$('tDough').textContent=g(total);$('tFlour').textContent=g(F);$('tWater').textContent=g(W);
   const rows=[
     [fname,whiteF,whiteF/F,''],
     ['Whole-grain flour',wgF,wgF/F,''],
     ['Water',mixW,mixW/F,'reserve ~5% for mixing in with salt'],
     ['Levain',lev,L,`${g(levF)} flour + ${g(levW)} water`],
     ['Salt',salt,S,''],
+    ...AI.map(x=>[x.n,x.pc/100*F,x.pc/100,(x.mix?'add with the salt':'fold in during set 1 of folds')+(x.soak?' · soak first':''),'addin']),
   ].filter(r=>r[1]>0.5||r[0]==='Salt');
-  $('tbody').innerHTML=rows.map(r=>`<tr${r[0]==='Levain'?' class="step"':''}><td>${r[0]}${r[3]?`<span class="note">${r[3]}</span>`:''}</td><td>${g(r[1])}</td><td>${g(r[1]/n)}</td><td>${r1(r[2]*100)}%</td></tr>`).join('')+
+  $('tbody').innerHTML=rows.map(r=>`<tr${r[0]==='Levain'?' class="step"':r[4]?' class="addin"':''}><td>${r[0]}${r[3]?`<span class="note">${r[3]}</span>`:''}</td><td>${g(r[1])}</td><td>${g(r[1]/n)}</td><td>${r1(r[2]*100)}%</td></tr>`).join('')+
     `<tr class="sum"><td>Total flour<span class="note">added + ${g(levF)} in the levain</span></td><td>${g(F)}</td><td>${g(F/n)}</td><td>100%</td></tr>`+
     `<tr class="sum"><td>Total water<span class="note">added + ${g(levW)} in the levain = hydration</span></td><td>${g(W)}</td><td>${g(W/n)}</td><td>${r1(H*100)}%</td></tr>`;
-  const parts=[['White flour',whiteF,'var(--muted)'],['Whole grain',wgF,'var(--rye)'],['Water',mixW,'#5b8fb0'],['Levain',lev,'var(--crust)'],['Salt',salt,'var(--ink)']].filter(p=>p[1]>0.5);
+  const parts=[['White flour',whiteF,'var(--muted)'],['Whole grain',wgF,'var(--rye)'],['Water',mixW,'#5b8fb0'],['Levain',lev,'var(--crust)'],['Salt',salt,'var(--ink)'],['Add-ins',addG,'#a07a9c']].filter(p=>p[1]>0.5);
   $('bar').innerHTML=parts.map(p=>`<i style="width:${p[1]/total*100}%;background:${p[2]}"></i>`).join('');
   $('legend').innerHTML=parts.map(p=>`<span style="--c:${p[2]}">${p[0]} ${Math.round(p[1]/total*100)}%</span>`).join('');
   if(mixW<0){$('tbody').insertAdjacentHTML('beforeend','<tr><td colspan="4" style="color:var(--warn)">The levain holds more water than the formula allows. Lower the levain % or raise hydration.</td></tr>')}
@@ -281,7 +324,8 @@ function calc(){
 
   // Bulk estimate (at dough temp)
   const doughC=useBox?(fermC*3+ddtC)/4:(roomC*2+ddtC)/3;
-  const bulk=clamp(5*Math.pow(2,(24-doughC)/8)*Math.pow(0.2/Math.max(L,.02),0.45)*(1-0.15*WG),2,18);
+  const slowAI=AI.filter(x=>x.slow&&x.pc>0);
+  const bulk=clamp(5*Math.pow(2,(24-doughC)/8)*Math.pow(0.2/Math.max(L,.02),0.45)*(1-0.15*WG)*(slowAI.length?1.1:1),2,18);
   const rise=doughC>=26?'30–50%':doughC>=24?'50%':doughC>=22?'50–75%':'75–100%';
 
   // Schedule
@@ -293,8 +337,9 @@ function calc(){
   const ev=[
     [feed,`<b>Build the levain</b> (${g(seed)} starter + ${g(nf)} flour + ${g(nw)} water)`],
     [autoly,`<b>Autolyse</b> (optional): flour and water only, ${Math.round(wDisp)}°${unit} water`],
-    [mix,`<b>Mix</b> in levain, then salt with the reserved water`],
-    [add(mix,0.5),`<b>Stretch & folds</b>: 4 sets every 30 min, then leave it`],
+    ...(AI.some(x=>x.soak)?[[add(mix,-1),`<b>Soak</b> ${AI.filter(x=>x.soak).map(x=>x.n.toLowerCase()).join(' and ')} (see Suggestions)`]]:[]),
+    [mix,`<b>Mix</b> in levain, then salt with the reserved water${(()=>{const m=AI.filter(x=>x.mix);return m.length?`, plus the ${m.map(x=>x.n.toLowerCase()).join(' and ')}`:''})()}`],
+    [add(mix,0.5),`<b>Stretch & folds</b>: 4 sets every 30 min, then leave it${(()=>{const f=AI.filter(x=>!x.mix);return f.length?`. Fold in the ${f.map(x=>x.n.toLowerCase()).join(' and ')} during set 1`:''})()}`],
     [bulkEnd,`<b>End of bulk</b> around ${rise} rise (~${hrs(bulk)} total)`],
     [add(bulkEnd,0.01),`<b>Pre-shape</b>, rest 20–30 min on the bench`],
     [shape,`<b>Shape</b> and into bannetons, cold proof 12–16 h`],
@@ -324,13 +369,29 @@ function calc(){
   if(wp>=60) ok('High whole grain','Rye- and whole-wheat-heavy doughs have less gluten. Shape gently, expect a tighter crumb, and consider a loaf pan above 70% rye.');
   ok('Bulk target',`Aim for ${rise} rise in a straight-sided container. Warmer dough should rise less before shaping because it keeps going in the fridge longer.`);
   if(Math.abs(LH-1)>.05) ok(LH<1?'Stiff levain':'Liquid levain',`This build makes a ${Math.round(LH*100)}% hydration levain, and the dough water above already accounts for it. ${LH<.8?'Stiff levains favor acetic tang and a slower, steadier rise.':LH<1?'Slightly stiff levains hold their peak a little longer.':'Wet levains ferment faster and taste milder.'}`);
+  if(AI.length){
+    const fold=AI.filter(x=>!x.mix),mixA=AI.filter(x=>x.mix),nm=a=>a.map(x=>x.n.toLowerCase()).join(' and ');
+    if(fold.length) ok('Folding in add-ins',`Add the ${nm(fold)} during the first set of stretch and folds: stretch the dough out, scatter them over it, and fold it up. Or laminate after set 1: stretch the dough thin on a wet counter, scatter, and roll it up. Waiting until the gluten has started to form spreads them evenly without tearing the dough.`);
+    if(mixA.length) ok('Mixed-in flavors',`The ${nm(mixA)} go in with the salt, since they're small enough to disperse during mixing.`);
+    const tips=AI.filter(x=>x.tip).map(x=>`<b style="display:inline;text-transform:none;letter-spacing:0;font-size:inherit">${x.n}:</b> ${x.tip}`);
+    if(tips.length) ok('Prep your add-ins',tips.join(' '));
+    AI.filter(x=>x.pc>x.hi).forEach(x=>warn(`Lots of ${x.n.toLowerCase()}`,`${r1(x.pc)}% is above the usual ${x.lo}–${x.hi}%. Heavy add-ins cut through the gluten and weigh the loaf down, so expect a tighter crumb and less rise.`));
+    const salty=AI.filter(x=>x.salty).reduce((a,x)=>a+x.pc,0);
+    if(salty>=10) ok('Salty add-ins',`Olives and cheese add their own salt. If you like it less salty, drop salt to about 1.8%.`);
+    if(AI.some(x=>x.wet)) ok('Wet add-ins',`Even patted dry, olives and jalapeños release moisture, so the dough will feel slacker after they go in. Holding back 10–20 g of water helps.`);
+    const sd=AI.find(x=>x.t==='seeds');
+    if(sd) ok('Seed soaker',`Soak the ${g(sd.pc/100*F)} of seeds in about ${g(sd.pc/100*F)} of water (double that for flax), drained of any excess. Soaked seeds don't steal water from the dough, though it will feel a little wetter.`);
+    if(slowAI.length) ok('Slower bulk',`${slowAI.map(x=>x.n).join(' and ')} slow the yeast a little, so the timeline allows about 10% more bulk time. Judge by the dough.`);
+    if(AI.some(x=>x.burn)) ok('Watch the crust',`Cheese, fruit and chocolate on the surface scorch. Tuck any exposed pieces under when shaping, and check the loaf 15 minutes after the lid comes off. Tent it with foil if it's browning too fast.`);
+    if(A>=0.25) ok('Heavy loaf',`With ${r1(A*100)}% add-ins, shape firmly so the loaf holds its height. Each loaf is now ${g(total/n)} with the add-ins, so check it fits your banneton.`);
+  }
   const per=total/n;
   if(per>1100) ok('Large loaves',`${g(per)} needs a 10-inch banneton and 5–10 more minutes lid-off.`);
   $('notes').innerHTML=N.map(([c,t,b])=>`<li class="${c}"><b>${t}</b>${b}</li>`).join('');
   save();
 }
 
-const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3'];
+const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','a1t','a1p','a2t','a2p','a3t','a3p'];
 function save(){try{const o={unit,anchor};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW'}catch(e){}}
 
@@ -343,8 +404,11 @@ function setUnit(u,convert=true){
 $('uC').onclick=()=>{setUnit('C');calc()};$('uF').onclick=()=>{setUnit('F');calc()};
 document.querySelectorAll('.size').forEach(e=>e.addEventListener('input',()=>{anchor=e.id}));
 document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const p=presets[b.dataset.p];Object.entries(p).forEach(([k,v])=>$(k).value=v);calc()});
+$('combo').addEventListener('input',()=>{const c=COMBO[$('combo').value];if(!c)return;
+  for(let i=1;i<=3;i++){const x=c[i-1];$('a'+i+'t').value=x?x[0]:'';$('a'+i+'p').value=x?x[1]:'';prevT[i-1]=x?x[0]:''}
+  $('combo').value=''});
 document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
-load();calc();
+load();prevT=[1,2,3].map(i=>$('a'+i+'t').value);calc();
 </script>
 </body>
 </html>
