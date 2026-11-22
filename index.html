@@ -416,6 +416,8 @@ $('combo').addEventListener('input',()=>{const c=COMBO[$('combo').value];if(!c)r
   for(let i=1;i<=3;i++){const x=c[i-1];$('a'+i+'t').value=x?x[0]:'';$('a'+i+'p').value=x?x[1]:'';prevT[i-1]=x?x[0]:''}
   $('combo').value=''});
 document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
+// Scrolling over a focused number box shouldn't change its value
+document.querySelectorAll('input[type=number]').forEach(e=>e.addEventListener('wheel',()=>{if(document.activeElement===e)e.blur()},{passive:true}));
 load();prevT=[1,2,3].map(i=>$('a'+i+'t').value);calc();
 </script>
 </body>
