@@ -140,7 +140,8 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     <div class="f"><label for="lev">Levain</label><div class="num"><input id="lev" type="number" min="2" max="50" step="1" value="20"><i>%</i></div></div>
     <div class="f wide"><label for="r1">Levain ratio<small>starter : new flour : new water</small></label><div class="ratio"><div class="num"><input id="r1" type="number" min="0.1" step="0.5" value="1" aria-label="Starter parts"></div>:<div class="num"><input id="r2" type="number" min="0.1" step="0.5" value="1" aria-label="New flour parts"></div>:<div class="num"><input id="r3" type="number" min="0" step="0.5" value="1" aria-label="New water parts"></div></div></div>
     <div class="f"><label for="salt">Salt</label><div class="num"><input id="salt" type="number" min="0" max="4" step="0.1" value="2"><i>%</i></div></div>
-    <div class="f"><label for="wg">Whole grain<small>whole wheat, rye, spelt</small></label><div class="num"><input id="wg" type="number" min="0" max="100" step="5" value="20"><i>%</i></div></div>
+    <div class="f"><label for="wg">Whole wheat<small>or spelt</small></label><div class="num"><input id="wg" type="number" min="0" max="100" step="5" value="20"><i>%</i></div></div>
+    <div class="f"><label for="rye">Rye</label><div class="num"><input id="rye" type="number" min="0" max="100" step="5" value="0"><i>%</i></div></div>
     <div class="f"><label for="sh">Starter hydration<small>your starter before the build</small></label><div class="num"><input id="sh" type="number" min="40" max="200" step="5" value="100"><i>%</i></div></div>
   </fieldset>
   <fieldset>
@@ -227,10 +228,10 @@ const val=id=>parseFloat($(id).value)||0;
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 
 const presets={
-  country:{hyd:70,lev:20,salt:2,wg:20,sh:100},
-  open:{hyd:82,lev:15,salt:2.1,wg:10,sh:100},
-  ww:{hyd:85,lev:20,salt:2,wg:50,sh:100},
-  rye:{hyd:88,lev:30,salt:1.9,wg:70,sh:100}
+  country:{hyd:70,lev:20,salt:2,wg:20,rye:0,sh:100},
+  open:{hyd:82,lev:15,salt:2.1,wg:10,rye:0,sh:100},
+  ww:{hyd:85,lev:20,salt:2,wg:50,rye:0,sh:100},
+  rye:{hyd:88,lev:30,salt:1.9,wg:10,rye:60,sh:100}
 };
 
 
@@ -277,7 +278,9 @@ function calc(){
   const ft=$('ftype').value;$('rowProt').hidden=ft!=='custom';
   const prot=ft==='custom'?clamp(val('prot'),7,16):{bread:12.7,bread2:12,ap:10.5,ka:11.7}[ft];
   const fname={bread:'Bread flour (KA)',bread2:'Bread flour',ap:'All-purpose flour',ka:'All-purpose flour (KA)',custom:`White flour (${r1(prot)}% protein)`}[ft];
-  const H=val('hyd')/100,L=val('lev')/100,S=val('salt')/100,WG=clamp(val('wg'),0,100)/100,SH=val('sh')/100;
+  const H=val('hyd')/100,L=val('lev')/100,S=val('salt')/100,SH=val('sh')/100;
+  let WW=clamp(val('wg'),0,100)/100,RY=clamp(val('rye'),0,100)/100;if(WW+RY>1){const k=1/(WW+RY);WW*=k;RY*=k}
+  const WG=WW+RY;
   const rs=Math.max(.1,val('r1')),rf=Math.max(.1,val('r2')),rw=Math.max(0,val('r3'));
   const sF=rs/(1+SH),LH=(rs-sF+rw)/(sF+rf);
   const fa=1-L/(1+LH);
@@ -288,13 +291,14 @@ function calc(){
   for(const k in show){if(k!==anchor)$(k).value=Math.round(show[k])}
   const W=H*F,salt=S*F,lev=L*F,levF=lev/(1+LH),levW=lev-levF;
   const mixF=F-levF,mixW=W-levW;
-  const wgF=Math.min(WG*F,mixF),whiteF=mixF-wgF;
+  const wgF=Math.min(WG*F,mixF),whiteF=mixF-wgF,wwF=WG?wgF*WW/WG:0,ryF=wgF-wwF;
   const addG=A*F, total=F+W+salt+addG;
   AI.forEach(x=>{$('a'+x.i+'h').textContent=`${g(x.pc/100*F)} · typical ${x.lo}–${x.hi}%`});
   $('perLoaf').textContent=addG>0.5?`+ ${g(addG)} add-ins = ${g(total)}${n>1?` · ${g(total/n)} per loaf`:''}`:(n>1?`${g(total/n)} per loaf`:'');$('tDough').textContent=g(total);$('tFlour').textContent=g(F);$('tWater').textContent=g(W);
   const rows=[
     [fname,whiteF,whiteF/F,''],
-    ['Whole-grain flour',wgF,wgF/F,''],
+    ['Whole wheat flour',wwF,wwF/F,''],
+    ['Rye flour',ryF,ryF/F,''],
     ['Water',mixW,mixW/F,'reserve ~5% for mixing in with salt'],
     ['Levain',lev,L,`${g(levF)} flour + ${g(levW)} water`],
     ['Salt',salt,S,''],
@@ -303,7 +307,7 @@ function calc(){
   $('tbody').innerHTML=rows.map(r=>`<tr${r[0]==='Levain'?' class="step"':r[4]?' class="addin"':''}><td>${r[0]}${r[3]?`<span class="note">${r[3]}</span>`:''}</td><td>${g(r[1])}</td><td>${g(r[1]/n)}</td><td>${r1(r[2]*100)}%</td></tr>`).join('')+
     `<tr class="sum"><td>Total flour<span class="note">added + ${g(levF)} in the levain</span></td><td>${g(F)}</td><td>${g(F/n)}</td><td>100%</td></tr>`+
     `<tr class="sum"><td>Total water<span class="note">added + ${g(levW)} in the levain = hydration</span></td><td>${g(W)}</td><td>${g(W/n)}</td><td>${r1(H*100)}%</td></tr>`;
-  const parts=[['White flour',whiteF,'var(--muted)'],['Whole grain',wgF,'var(--rye)'],['Water',mixW,'#5b8fb0'],['Levain',lev,'var(--crust)'],['Salt',salt,'var(--ink)'],['Add-ins',addG,'#a07a9c']].filter(p=>p[1]>0.5);
+  const parts=[['White flour',whiteF,'var(--muted)'],['Whole wheat',wwF,'var(--rye)'],['Rye',ryF,'#8b6f4e'],['Water',mixW,'#5b8fb0'],['Levain',lev,'var(--crust)'],['Salt',salt,'var(--ink)'],['Add-ins',addG,'#a07a9c']].filter(p=>p[1]>0.5);
   $('bar').innerHTML=parts.map(p=>`<i style="width:${p[1]/total*100}%;background:${p[2]}"></i>`).join('');
   $('legend').innerHTML=parts.map(p=>`<span style="--c:${p[2]}">${p[0]} ${Math.round(p[1]/total*100)}%</span>`).join('');
   if(mixW<0){$('tbody').insertAdjacentHTML('beforeend','<tr><td colspan="4" style="color:var(--warn)">The levain holds more water than the formula allows. Lower the levain % or raise hydration.</td></tr>')}
@@ -330,7 +334,7 @@ function calc(){
   // Bulk estimate (at dough temp)
   const doughC=useBox?(fermC*3+ddtC)/4:(roomC*2+ddtC)/3;
   const slowAI=AI.filter(x=>x.slow&&x.pc>0);
-  const bulk=clamp(5*Math.pow(2,(24-doughC)/8)*Math.pow(0.2/Math.max(L,.02),0.45)*(1-0.15*WG)*(slowAI.length?1.1:1),2,18);
+  const bulk=clamp(5*Math.pow(2,(24-doughC)/8)*Math.pow(0.2/Math.max(L,.02),0.45)*Math.max(.6,1-0.15*WW-0.25*RY)*(slowAI.length?1.1:1),2,18);
   const rise=doughC>=26?'30–50%':doughC>=24?'50%':doughC>=22?'50–75%':'75–100%';
 
   // Schedule
@@ -355,12 +359,13 @@ function calc(){
 
   // Suggestions
   const N=[];const ok=(t,b)=>N.push(['',t,b]),warn=(t,b)=>N.push(['warn',t,b]);
-  const hp=H*100,wp=WG*100,lp=L*100,sp=S*100;
-  const pShift=(prot-12.7)*1.7*(1-WG);const thirst=65+wp*0.15+pShift;
+  const hp=H*100,wp=WG*100,wwp=Math.round(WW*100),ryp=Math.round(RY*100),lp=L*100,sp=S*100;
+  const gTxt=wwp&&ryp?`${wwp}% whole wheat and ${ryp}% rye`:ryp?`${ryp}% rye`:wwp?`${wwp}% whole wheat`:'no whole grain';
+  const pShift=(prot-12.7)*1.7*(1-WG);const thirst=65+wwp*0.15+ryp*0.25+pShift;
   const fl=fname.split(' (')[0].toLowerCase();
-  if(hp>thirst+15) warn('Very wet for this flour',`With ${fl} and ${wp}% whole grain, ${Math.round(thirst+5)}–${Math.round(thirst+12)}% is a comfortable range. Hold back 5–8% of the water and add it only if the dough takes it.`);
-  else if(hp<thirst-3&&wp>=30) warn('Thirsty flour',`${wp}% whole grain absorbs a lot. Try ${Math.round(thirst+5)}% hydration or a longer autolyse so the bran softens.`);
-  else ok('Hydration fits the flour',`${hp}% is well matched to ${fl} with ${wp}% whole grain. ${hp>=80?'Use wet hands and coil folds to build strength.':'Expect a manageable, shapeable dough.'}`);
+  if(hp>thirst+15) warn('Very wet for this flour',`With ${fl} and ${gTxt}, ${Math.round(thirst+5)}–${Math.round(thirst+12)}% is a comfortable range. Hold back 5–8% of the water and add it only if the dough takes it.`);
+  else if(hp<thirst-3&&wp>=30) warn('Thirsty flour',`${gTxt[0].toUpperCase()+gTxt.slice(1)} absorbs a lot of water.`+` Try ${Math.round(thirst+5)}% hydration or a longer autolyse so the bran softens.`);
+  else ok('Hydration fits the flour',`${hp}% is well matched to ${fl} with ${gTxt}. ${hp>=80?'Use wet hands and coil folds to build strength.':'Expect a manageable, shapeable dough.'}`);
   if(prot<11.5) ok('Softer flour',`At about ${r1(prot)}% protein this flour holds roughly ${Math.round(-pShift)} points less water than bread flour, and the ranges above already allow for that. Its gluten is weaker, so add an extra set of folds, end bulk at the low end of the rise target, and shape tight.`);
   else if(prot<12.3) ok('Medium-strength flour',`At about ${r1(prot)}% protein this flour behaves close to bread flour. Use 1–2 points less water and it will handle about the same.`);
   else if(prot>=13.5) ok('Strong flour',`At about ${r1(prot)}% protein this flour can take a few points more water and a longer bulk without collapsing.`);
@@ -371,6 +376,7 @@ function calc(){
   if(fermC<20) warn(useBox?'Cool proofing box':'Cool kitchen',`At ${Math.round(fromC(fermC))}°${unit}, aim for the warmer side of your target dough temp and judge bulk by rise, not time.`);
   if(fermC>27) warn(useBox?'Warm proofing box':'Warm kitchen',`Use cold water and check the dough early. Aim for only ${rise} rise before shaping.`);
   if(useBox) ok('Proofing box',`Bulk and levain times assume the box at ${Math.round(fromC(fermC))}°${unit}. Setting it to your target dough temp (${Math.round(val('ddt'))}°${unit}) keeps the dough steady through bulk. Water temperature still uses your room temp, since that's where you mix.`);
+  if(ryp>=10) ok('Rye in the dough',`Rye builds little gluten and makes dough sticky rather than strong, so it will feel wetter than the hydration number suggests. Use wet hands, handle it gently, and expect a faster bulk (the timeline allows for it).${ryp>20?' Above 20% rye the crumb gets noticeably tighter and the loaf spreads more.':''}`);
   if(wp>=60) ok('High whole grain','Rye- and whole-wheat-heavy doughs have less gluten. Shape gently, expect a tighter crumb, and consider a loaf pan above 70% rye.');
   ok('Bulk target',`Aim for ${rise} rise in a straight-sided container. Warmer dough should rise less before shaping because it keeps going in the fridge longer.`);
   if(Math.abs(LH-1)>.05) ok(LH<1?'Stiff levain':'Liquid levain',`This build makes a ${Math.round(LH*100)}% hydration levain, and the dough water above already accounts for it. ${LH<.8?'Stiff levains favor acetic tang and a slower, steadier rise.':LH<1?'Slightly stiff levains hold their peak a little longer.':'Wet levains ferment faster and taste milder.'}`);
@@ -398,7 +404,7 @@ function calc(){
   save();
 }
 
-const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','a1t','a1p','a2t','a2p','a3t','a3p'];
+const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','a1t','a1p','a2t','a2p','a3t','a3p'];
 function save(){try{const o={unit,anchor};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW'}catch(e){}}
 
