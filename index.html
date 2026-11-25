@@ -728,7 +728,7 @@ async function scInitAI(){
 async function scAsk(){
   if(!scSample)return;
   const now=SC.shots.Now.file;const out=$('aiOut');
-  if(!now){out.hidden=false;out.textContent='Take a photo of the jar first.';return}
+  if(!now){out.hidden=false;out.textContent=SC.shots.Feed.url?`Your before photo is saved. Claude judges readiness from the "${$('hNow').textContent}" photo, so take that one later, when you want to know if it's ready, then ask again.`:`Take the "${$('hNow').textContent}" photo first.`;return}
   const imgs=[now];let fb=SC.shots.Feed.file;
   if(SC.mode==='two'&&!fb&&SC.shots.Feed.url){try{fb=await (await fetch(SC.shots.Feed.url)).blob()}catch(e){fb=null}}
   const two=SC.mode==='two'&&fb;if(two)imgs.push(fb);
