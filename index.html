@@ -618,7 +618,7 @@ function scDraw(k){
   if(img.getAttribute('src')!==sh.url)img.src=sh.url;
   pic.querySelectorAll('.mk').forEach(m=>m.remove());
   const steps=scSteps(k);
-  sh.taps.forEach((y,i)=>{const m=document.createElement('div');m.className='mk';m.style.top=(y*100)+'%';m.style.setProperty('--c',SC_COL[i]);
+  sh.taps.slice(0,steps.length).forEach((y,i)=>{const m=document.createElement('div');m.className='mk';m.style.top=(y*100)+'%';m.style.setProperty('--c',SC_COL[i]);
     const t=document.createElement('span');t.textContent=steps[i].split(' (')[0];m.append(t);pic.append(m)});
   const next=steps[sh.taps.length];
   const pr=$('prompt'+k);pr.textContent='';
@@ -651,9 +651,12 @@ async function scPick(k,file){
   if(k==='Feed')saveFeed(t,true);
 }
 function toLocalInput(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
-function scSetMode(m){SC.mode=m;SCT[TG].mode=m;$('scBand').setAttribute('aria-pressed',m==='band');$('scTwo').setAttribute('aria-pressed',m==='two');
+function scSetMode(m){const changed=SCT[TG].mode!==m;SC.mode=m;SCT[TG].mode=m;$('scBand').setAttribute('aria-pressed',m==='band');$('scTwo').setAttribute('aria-pressed',m==='two');
   $('shotFeed').hidden=m!=='two';
-  ['Now','Feed'].forEach(k=>{const sh=SC.shots[k];sh.taps=sh.taps.slice(0,scSteps(k).length);scDraw(k)});starterCheck();save()}
+  // The before photo's lines are kept even while unused. The now photo's third line means start line in one mode
+  // and jar rim in the other, so only that one is cleared when the mode changes.
+  const n=SC.shots.Now;if(changed&&n.taps.length>2)n.taps=n.taps.slice(0,2);
+  ['Now','Feed'].forEach(k=>scDraw(k));starterCheck();save()}
 function scTarget(t){
   TG=t==='levain'?'levain':'master';SC.shots=SCT[TG].shots;
   $('tgM').setAttribute('aria-pressed',TG==='master');$('tgL').setAttribute('aria-pressed',TG==='levain');
