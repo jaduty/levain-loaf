@@ -262,6 +262,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
         </div>
         <div class="f"><label for="scRatio">Fed at</label><div class="num"><select id="scRatio"><option value="1">1:1:1</option><option value="2">1:2:2</option><option value="3">1:3:3</option><option value="5">1:5:5</option><option value="10">1:10:10</option></select></div></div>
         <div class="f"><label for="fedAt">Fed</label><div class="num"><input id="fedAt" type="datetime-local"></div></div>
+        <button type="button" class="btn" id="scNew">I just fed it</button>
       </div>
       <div class="sc-shots">
         <div class="shot" id="shotFeed" hidden>
@@ -269,6 +270,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
           <div class="pick"><label class="btn" for="fileFeed">Take or choose photo</label><input id="fileFeed" type="file" accept="image/*" capture="environment"><button type="button" class="btn" id="clrFeed" hidden>Redo taps</button></div>
           <div class="pic" id="picFeed">No photo yet</div>
           <div class="prompt" id="promptFeed"></div>
+          <div class="sc-note" id="feedSaved" style="margin:0"></div>
         </div>
         <div class="shot">
           <h3>Starter now</h3>
@@ -282,8 +284,8 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
         <div class="sc-actions"><button type="button" class="btn" id="askAI" hidden>Ask Claude about this photo</button><button type="button" class="btn" id="logBtn" disabled>Log this check</button><span class="flash" id="logFlash" role="status"></span></div>
         <div class="ai" id="aiOut" hidden></div>
       </div>
-      <details class="sclog" id="scLog"><summary id="logSum">Your starter's log</summary><p id="logTxt"></p><div class="tblwrap"><table><thead><tr><th>When</th><th>Feed</th><th>Temp</th><th>Hours</th><th>Rise</th><th>Result</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div></details>
-      <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. Photos stay on your device and aren't saved.<span id="aiNote"></span></p>
+      <details class="sclog" id="scLog"><summary id="logSum">Your starter's log</summary><p id="logTxt"></p><p class="sc-note" id="logSync" style="margin:0 0 8px">Saved on this device.</p><div class="tblwrap"><table><thead><tr><th>When</th><th>Feed</th><th>Temp</th><th>Hours</th><th>Rise</th><th>Result</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div></details>
+      <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. The feeding time and before photo are kept so you can close the app and come back later. The "now" photo isn't saved.<span id="aiNote"></span></p>
     </div>
   </section>
 
@@ -537,14 +539,21 @@ function scTap(k,e){
   const nat=img.naturalWidth/img.naturalHeight||1,box=r.width/r.height;
   let top=r.top,h=r.height;if(box<nat){h=r.width/nat;top=r.top+(r.height-h)/2}
   const y=(e.clientY-top)/h;if(y<0||y>1)return;
-  sh.taps.push(y);scDraw(k);starterCheck();
+  sh.taps.push(y);scDraw(k);starterCheck();if(k==='Feed')saveFeed(false);
 }
-function scPick(k,file){
+async function scShrink(file){
+  try{const bm=await createImageBitmap(file,{imageOrientation:'from-image'});const sc=Math.min(1,1600/Math.max(bm.width,bm.height));
+    const c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85));return b||file}catch(e){return file}
+}
+async function scPick(k,file){
   const sh=SC.shots[k];if(!file)return;
-  if(sh.url)URL.revokeObjectURL(sh.url);
-  sh.url=URL.createObjectURL(file);sh.file=file;sh.taps=[];
-  if(k==='Feed'&&file.lastModified&&!$('fedAt').value)$('fedAt').value=toLocalInput(new Date(file.lastModified));
+  const lm=file.lastModified;const img=await scShrink(file);
+  if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);
+  sh.url=URL.createObjectURL(img);sh.file=img;sh.taps=[];
+  if(k==='Feed'&&lm&&!$('fedAt').value)$('fedAt').value=toLocalInput(new Date(lm));
   $('aiOut').hidden=true;SC.lastAI=null;scDraw(k);starterCheck();
+  if(k==='Feed')saveFeed(true);
 }
 function toLocalInput(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
 function scSetMode(m){SC.mode=m;$('scBand').setAttribute('aria-pressed',m==='band');$('scTwo').setAttribute('aria-pressed',m==='two');
@@ -561,7 +570,8 @@ let SCLOG=[];try{SCLOG=JSON.parse(localStorage.getItem('sd-starter-log')||'[]')|
 function scModel(ratio,tC){return clamp((4+2.2*Math.log2(Math.max(1,ratio)))*Math.pow(2,(24-tC)/8),2,24)}
 function scK(){const o=SCLOG.filter(e=>e.peakObs&&e.el>0).map(e=>e.el/scModel(e.ratio,e.tC)).sort((a,b)=>a-b);
   if(!o.length)return {k:1,n:0};const m=o.length%2?o[(o.length-1)/2]:(o[o.length/2-1]+o[o.length/2])/2;return {k:clamp(m,0.4,2.5),n:o.length}}
-function scSaveLog(){try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG.slice(-60)))}catch(e){}}
+function scSaveLog(){SCLOG=SCLOG.slice(-60);try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}if(SCSYNC.ref)scPush()}
+const SCSYNC={ref:null,busy:false,again:false,state:'local'};
 function scContext(){
   const ratio=+$('scRatio').value||1;
   const roomC=toC(val('room')),useBox=$('box').value.trim()!=='';const tC=useBox?toC(val('box')):roomC;
@@ -606,7 +616,9 @@ async function scAsk(){
   if(!scSample)return;
   const now=SC.shots.Now.file;const out=$('aiOut');
   if(!now){out.hidden=false;out.textContent='Take a photo of the starter first.';return}
-  const imgs=[now];const two=SC.mode==='two'&&SC.shots.Feed.file;if(two)imgs.push(SC.shots.Feed.file);
+  const imgs=[now];let fb=SC.shots.Feed.file;
+  if(SC.mode==='two'&&!fb&&SC.shots.Feed.url){try{fb=await (await fetch(SC.shots.Feed.url)).blob()}catch(e){fb=null}}
+  const two=SC.mode==='two'&&fb;if(two)imgs.push(fb);
   const c=scContext(),R=scMeasure();
   const hist=c.K.n?`This baker's log of ${c.K.n} earlier check${c.K.n>1?'s':''} shows this starter peaks about ${Math.round(Math.abs(c.K.k-1)*100)}% ${c.K.k<1?'faster':'slower'} than typical, so at this ratio and temperature it should peak around ${c.peak.toFixed(1)} hours after feeding. `:`At that ratio and temperature a typical starter peaks around ${c.peak.toFixed(1)} hours after feeding. `;
   const prompt=`You are an experienced sourdough baker looking at photos of a home baker's starter to judge where it is in its rise-and-fall cycle and whether it's ready to use. `+
@@ -662,9 +674,15 @@ async function scAsk(){
 ['Now','Feed'].forEach(k=>{
   $('file'+k).addEventListener('change',e=>{scPick(k,e.target.files&&e.target.files[0]);e.target.value=''});
   $('pic'+k).addEventListener('click',e=>scTap(k,e));
-  $('clr'+k).addEventListener('click',()=>{SC.shots[k].taps=[];scDraw(k);starterCheck()});
+  $('clr'+k).addEventListener('click',()=>{SC.shots[k].taps=[];scDraw(k);starterCheck();if(k==='Feed')saveFeed(false)});
 });
-$('scBand').onclick=()=>scSetMode('band');$('scTwo').onclick=()=>scSetMode('two');
+$('scBand').onclick=()=>{scSetMode('band');saveFeed(false)};$('scTwo').onclick=()=>{scSetMode('two');saveFeed(false)};
+$('fedAt').addEventListener('change',()=>saveFeed(false));$('scRatio').addEventListener('change',()=>saveFeed(false));
+$('scNew').onclick=()=>{
+  ['Now','Feed'].forEach(k=>{const sh=SC.shots[k];if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);sh.url=null;sh.file=null;sh.taps=[];scDraw(k)});
+  $('fedAt').value=toLocalInput(new Date());$('aiOut').hidden=true;SC.lastAI=null;starterCheck();saveFeed(true);
+  $('feedSaved').textContent='';const f=$('logFlash');if(f){f.textContent='Feeding time set to now.';setTimeout(()=>{f.textContent=''},4000)}
+};
 $('askAI').onclick=scAsk;
 function scRenderLog(){
   const n=SCLOG.length;$('logSum').textContent=`Your starter's log (${n})`;$('scLog').hidden=!n;
@@ -685,10 +703,96 @@ function scLog(){
   const STG={just_fed:'Just fed',rising:'Rising',near_peak:'Near peak',peak:'Peak',falling:'Falling',collapsed:'Collapsed'};
   SCLOG.push({t:Date.now(),ratio:c.ratio,tC:c.tC,el:c.el,rise:R,result:ai?('Claude: '+(STG[ai]||ai)):(SC.last&&SC.last.pill)||'',peakObs});
   scSaveLog();scRenderLog();calc();
-  const f=$('logFlash');f.textContent=peakObs?'Logged. This one counts toward your starter\'s peak time.':'Logged.';setTimeout(()=>{f.textContent=''},4000);
+  const f=$('logFlash');f.textContent=(SCSYNC.state==='cloud'?'Logged to your Claude account.':'Logged.')+(peakObs?' This one counts toward your starter\'s peak time.':'');setTimeout(()=>{f.textContent=''},4000);
 }
 $('logBtn').onclick=scLog;
 scRenderLog();
+// ---------- Keep the feeding (time, ratio, mode, before photo) ----------
+const FEED={meta:null};let SCASSETS=null;
+function idbOpen(){return new Promise((res,rej)=>{try{const r=indexedDB.open('levain-loaf',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function idbSet(k,v){try{const d=await idbOpen();await new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){}}
+async function idbGet(k){try{const d=await idbOpen();return await new Promise((res,rej)=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}catch(e){return null}}
+function feedNote(){const el=$('feedSaved');if(!el)return;const sh=SC.shots.Feed;
+  if(!sh.url){el.textContent='';return}
+  el.textContent=SCSYNC.ref&&FEED.meta&&FEED.meta.assetId?'Saved to your Claude account.':'Saved on this device.'}
+async function saveFeed(photoChanged,quiet){
+  const prev=FEED.meta||{};
+  const meta={savedAt:quiet&&prev.savedAt?prev.savedAt:Date.now(),fedAt:$('fedAt').value||'',ratio:$('scRatio').value,mode:SC.mode,taps:SC.shots.Feed.taps.slice(0,3),assetId:photoChanged?null:(prev.assetId||FEED.lastAsset||null)};
+  FEED.meta=meta;
+  const blob=SC.shots.Feed.file||null;
+  idbSet('feed',{meta,blob:photoChanged||blob?blob:undefined});
+  if(SCSYNC.ref&&SCASSETS&&photoChanged){
+    const old=FEED.lastAsset||prev.assetId;
+    if(blob){try{const r=await SCASSETS.upload(blob,{type:blob.type&&/^image\/(jpeg|png|webp|gif)$/.test(blob.type)?blob.type:'image/jpeg'});
+      if(SC.shots.Feed.file===blob&&FEED.meta){FEED.meta.assetId=r.id;idbSet('feed',{meta:FEED.meta,blob})}else{SCASSETS.delete(r.id).catch(()=>{})}}catch(e){const f=$('feedSaved');if(f)f.textContent='Saved on this device only (couldn\'t upload to your account).'}}
+    if(old&&old!==(FEED.meta&&FEED.meta.assetId))SCASSETS.delete(old).catch(()=>{});
+    FEED.lastAsset=FEED.meta&&FEED.meta.assetId||null;
+  }
+  if(SCSYNC.ref)scPush();
+  feedNote();
+}
+function applyFeed(meta,blob){
+  FEED.meta={...meta,taps:Array.isArray(meta.taps)?meta.taps.filter(x=>typeof x==='number'&&x>=0&&x<=1).slice(0,3):[]};
+  if(typeof meta.fedAt==='string')$('fedAt').value=meta.fedAt;
+  if(meta.ratio&&[...$('scRatio').options].some(o=>o.value===String(meta.ratio)))$('scRatio').value=String(meta.ratio);
+  if(meta.mode==='two'||meta.mode==='band')scSetMode(meta.mode);
+  const sh=SC.shots.Feed;if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);
+  if(blob){sh.url=URL.createObjectURL(blob);sh.file=blob}
+  else if(meta.assetId&&/^[A-Za-z0-9_-]{8,64}$/.test(meta.assetId)){sh.url='/_blob/'+meta.assetId;sh.file=null}
+  else{sh.url=null;sh.file=null}
+  FEED.lastAsset=FEED.meta.assetId||null;
+  sh.taps=FEED.meta.taps.slice();scDraw('Feed');starterCheck();feedNote();
+}
+(async()=>{const rec=await idbGet('feed');if(rec&&rec.meta&&(!FEED.meta||rec.meta.savedAt>FEED.meta.savedAt))applyFeed(rec.meta,rec.blob||null)})();
+
+// Sync the log to the viewer's Claude account (Claude-hosted app only)
+function scSyncNote(){const el=$('logSync');if(!el)return;
+  el.textContent=SCSYNC.state==='cloud'?'Synced to your Claude account, so it\'s the same on every device you sign in on.':SCSYNC.state==='waiting'?'Connecting to your Claude account… showing this device\'s log for now.':SCSYNC.state==='offline'?'Couldn\'t reach your Claude account. Showing and saving this device\'s log; it will sync next time.':'Saved on this device.'}
+async function scPush(){
+  if(!SCSYNC.ref)return;if(SCSYNC.busy){SCSYNC.again=true;return}
+  SCSYNC.busy=true;
+  try{do{SCSYNC.again=false;await SCSYNC.ref.set({entries:SCLOG.slice(-60),feed:FEED.meta||null,updated:Date.now()})}while(SCSYNC.again)}
+  catch(e){if(e&&e.code==='quota_exceeded'){const f=$('logFlash');if(f)f.textContent='Your Claude account log is full; older entries will be trimmed.'}
+    else if(e&&(e.code==='revoked'||e.code==='not_granted'||e.code==='invalid_argument')){SCSYNC.ref=null;SCSYNC.state='local';scSyncNote()}}
+  finally{SCSYNC.busy=false}
+}
+async function scInitSync(){
+  try{
+    if(!window.claude||typeof window.claude.use!=='function')return;
+    const [db,user,assets]=await Promise.all([window.claude.use('db'),window.claude.use('user'),window.claude.use('assets')]);
+    if(!db||!user)return;SCASSETS=assets;
+    const uid=await user.id();if(!uid)return;
+    const ref=db.doc('data/users/'+uid+'/starter');
+    SCSYNC.state='waiting';scSyncNote();
+    let first=true;
+    const timer=setTimeout(()=>{if(SCSYNC.state==='waiting'){SCSYNC.state='offline';scSyncNote()}},10000);
+    ref.onSnapshot(snap=>{
+      if(snap.metadata&&snap.metadata.hasPendingWrites)return;
+      const cloud=snap.exists&&Array.isArray((snap.data()||{}).entries)?snap.data().entries.filter(e=>e&&typeof e.t==='number'):[];
+      const cf=snap.exists?(snap.data()||{}).feed:null;
+      if(first){
+        if(snap.metadata&&snap.metadata.fromCache&&!cloud.length)return; // wait for the store's answer before merging
+        first=false;clearTimeout(timer);
+        // First connection: merge this device's entries into the account's log
+        const seen=new Set(cloud.map(e=>e.t));const merged=cloud.concat(SCLOG.filter(e=>!seen.has(e.t))).sort((a,b)=>a.t-b.t).slice(-60);
+        SCLOG=merged;SCSYNC.ref=ref;SCSYNC.state='cloud';
+        try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}
+        // The feeding: newest wins. If this device's is newer, send it (and its photo) up.
+        const lf=FEED.meta;
+        if(cf&&typeof cf.savedAt==='number'&&(!lf||cf.savedAt>lf.savedAt))applyFeed(cf,null);
+        else if(lf&&(!cf||lf.savedAt>(cf.savedAt||0))){saveFeed(!!SC.shots.Feed.file&&!lf.assetId,true);}
+        if(merged.length!==cloud.length)scPush();
+      }else{
+        SCLOG=cloud.slice(-60);SCSYNC.state='cloud';
+        if(cf&&typeof cf.savedAt==='number'&&(!FEED.meta||cf.savedAt>FEED.meta.savedAt))applyFeed(cf,null);
+        try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}
+      }
+      scSyncNote();scRenderLog();calc();feedNote();
+    },err=>{clearTimeout(timer);SCSYNC.ref=null;SCSYNC.state=err&&err.code==='revoked'?'local':'offline';scSyncNote()});
+  }catch(e){}
+}
+scSyncNote();scInitSync();
+
 
 setInterval(()=>{if(!document.hidden)starterCheck()},60000);
 scInitAI();
