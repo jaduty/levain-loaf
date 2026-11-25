@@ -543,7 +543,7 @@ function calc(){
 }
 
 const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','buildG','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt','stName','stWW','stRye','lvWW','lvRye','lvAt'];
-function save(){try{const o={unit,anchor,scTarget:TG};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}}
+function save(){try{const o={unit,anchor,scTarget:TG};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}try{setDirty()}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW';if(o.scTarget==='levain')TG_LOAD='levain'}catch(e){}}
 
 function setUnit(u,convert=true){
@@ -889,13 +889,42 @@ function applyProf(m){PROF.meta={savedAt:m.savedAt,name:String(m.name||'').slice
 ['stName','stWW','stRye'].forEach(id=>$(id).addEventListener('change',saveProf));
 $('stName').addEventListener('input',()=>{if(TG==='master')$('hNow').textContent=`${mName(true)} now`});
 
+// ---------- Formula settings: sync to the account (Claude-hosted app only) ----------
+// Starter and levain fields sync with their own cards, so they're left out here.
+const SET_SKIP=new Set(['scRatio','fedAt','stName','stWW','stRye','lvWW','lvRye','lvAt']);
+const SETS={ready:false,last:'',lastObj:null,savedAt:0,timer:null};
+function setSnap(){const o={unit,anchor};ids.forEach(i=>{if(!SET_SKIP.has(i))o[i]=$(i).value});return o}
+function setInit(){const o=setSnap();SETS.lastObj=o;SETS.last=JSON.stringify(o);
+  try{SETS.savedAt=+localStorage.getItem('sd-v2-saved')||0}catch(e){}SETS.ready=true}
+function setDirty(){
+  if(!SETS.ready)return;const o=setSnap(),j=JSON.stringify(o);if(j===SETS.last)return;
+  SETS.last=j;SETS.lastObj=o;SETS.savedAt=Date.now();try{localStorage.setItem('sd-v2-saved',String(SETS.savedAt))}catch(e){}
+  if(SCSYNC.ref){clearTimeout(SETS.timer);SETS.timer=setTimeout(scPush,1500)}
+}
+function applySettings(cs){
+  const v=cs.values||{};
+  SETS.ready=false;
+  ids.forEach(i=>{if(!SET_SKIP.has(i)&&typeof v[i]==='string')$(i).value=v[i]});
+  if(v.unit==='C'||v.unit==='F')setUnit(v.unit,false);
+  if(['addF','totF','doughW'].includes(v.anchor))anchor=v.anchor;
+  prevT=[1,2,3].map(i=>$('a'+i+'t').value);
+  calc();
+  SETS.savedAt=cs.savedAt;try{localStorage.setItem('sd-v2-saved',String(SETS.savedAt))}catch(e){}
+  setInit();SETS.savedAt=cs.savedAt;
+}
+function mergeSettings(cs,first){
+  if(!SETS.ready)return;
+  if(cs&&typeof cs.savedAt==='number'&&cs.savedAt>SETS.savedAt&&cs.values){applySettings(cs);return}
+  if(first&&SETS.savedAt&&(!cs||SETS.savedAt>(cs.savedAt||0)))scPush();
+}
+
 // Sync to the viewer's Claude account (Claude-hosted app only)
 function scSyncNote(){const el=$('logSync');if(!el)return;
   el.textContent=SCSYNC.state==='cloud'?'Synced to your Claude account, so it\'s the same on every device you sign in on.':SCSYNC.state==='waiting'?'Connecting to your Claude account… showing this device\'s log for now.':SCSYNC.state==='offline'?'Couldn\'t reach your Claude account. Showing and saving this device\'s log; it will sync next time.':'Saved on this device.'}
 async function scPush(){
   if(!SCSYNC.ref)return;if(SCSYNC.busy){SCSYNC.again=true;return}
   SCSYNC.busy=true;
-  try{do{SCSYNC.again=false;await SCSYNC.ref.set({entries:SCLOG.slice(-60),feed:SCT.master.meta||null,feedLevain:SCT.levain.meta||null,starter:PROF.meta||null,updated:Date.now()})}while(SCSYNC.again)}
+  try{do{SCSYNC.again=false;await SCSYNC.ref.set({entries:SCLOG.slice(-60),feed:SCT.master.meta||null,feedLevain:SCT.levain.meta||null,starter:PROF.meta||null,settings:SETS.ready&&SETS.savedAt?{savedAt:SETS.savedAt,values:SETS.lastObj}:null,updated:Date.now()})}while(SCSYNC.again)}
   catch(e){if(e&&e.code==='quota_exceeded'){const f=$('logFlash');if(f)f.textContent='Your Claude account log is full; older entries will be trimmed.'}
     else if(e&&(e.code==='revoked'||e.code==='not_granted'||e.code==='invalid_argument')){SCSYNC.ref=null;SCSYNC.state='local';scSyncNote()}}
   finally{SCSYNC.busy=false}
@@ -928,12 +957,14 @@ async function scInitSync(){
         SCLOG=merged;SCSYNC.ref=ref;SCSYNC.state='cloud';
         try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}
         let pushed=mergeFeed('master',D.feed,true);pushed=mergeFeed('levain',D.feedLevain,true)||pushed;
+        mergeSettings(D.settings,true);
         const cp=D.starter;
         if(cp&&typeof cp.savedAt==='number'&&(!PROF.meta||cp.savedAt>PROF.meta.savedAt))applyProf(cp);else if(PROF.meta&&(!cp||PROF.meta.savedAt>(cp.savedAt||0)))scPush();
         if(merged.length!==cloud.length&&!pushed)scPush();
       }else{
         SCLOG=cloud.slice(-60);SCSYNC.state='cloud';
         mergeFeed('master',D.feed,false);mergeFeed('levain',D.feedLevain,false);
+        mergeSettings(D.settings,false);
         const cp=D.starter;if(cp&&typeof cp.savedAt==='number'&&(!PROF.meta||cp.savedAt>PROF.meta.savedAt))applyProf(cp);
         try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}
       }
@@ -951,7 +982,7 @@ scInitAI();
 document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
 // Scrolling over a focused number box shouldn't change its value
 document.querySelectorAll('input[type=number]').forEach(e=>e.addEventListener('wheel',()=>{if(document.activeElement===e)e.blur()},{passive:true}));
-load();prevT=[1,2,3].map(i=>$('a'+i+'t').value);calc();stShow();if(TG_LOAD==='levain')scTarget('levain');
+load();prevT=[1,2,3].map(i=>$('a'+i+'t').value);calc();stShow();if(TG_LOAD==='levain')scTarget('levain');setInit();
 </script>
 </body>
 </html>
