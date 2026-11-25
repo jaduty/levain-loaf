@@ -157,6 +157,14 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
 .sclog th,.sclog td{padding:6px 10px}
 .sclog td{font-size:13px}
 .sclog button.x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px}
+.sc-me{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.sc-me .f{display:flex;gap:8px;align-items:center}
+.sc-me label{font-size:13px;color:var(--muted)}
+.sc-me .num{width:auto}
+.sc-me #stName{width:9em;text-align:left;font-family:var(--body)}
+.sc-me input[type=number]{width:3.5em}
+.sc-me .blend{font-size:13px;color:var(--muted)}
+#stTitle{color:var(--crust)}
 .sc-note{font-size:12px;color:var(--muted);margin:10px 0 0;max-width:75ch}
 .foot{margin-top:28px;color:var(--muted);font-size:12px;max-width:75ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -255,8 +263,14 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
   </div>
 
   <section>
-    <h2>Starter check</h2>
+    <h2>Starter check<span id="stTitle"></span></h2>
     <div class="card">
+      <div class="sc-me" aria-label="My starter">
+        <div class="f"><label for="stName">My starter</label><div class="num"><input id="stName" type="text" maxlength="40" placeholder="Name"></div></div>
+        <div class="f"><label for="stWW">Fed with whole wheat</label><div class="num"><input id="stWW" type="number" min="0" max="100" step="5" placeholder="0"><i>%</i></div></div>
+        <div class="f"><label for="stRye">rye</label><div class="num"><input id="stRye" type="number" min="0" max="100" step="5" placeholder="0"><i>%</i></div></div>
+        <span class="blend" id="stBlend"></span>
+      </div>
       <div class="sc-top">
         <div class="seg" role="group" aria-label="How to measure">
           <button type="button" id="scBand" aria-pressed="true">Start line in photo</button><button type="button" id="scTwo" aria-pressed="false">Before &amp; after photos</button>
@@ -380,14 +394,16 @@ function calc(){
   for(const k in show){if(k!==anchor)$(k).value=Math.round(show[k])}
   const W=H*F,salt=S*F,lev=L*F,levF=lev/(1+LH),levW=lev-levF;
   const mixF=F-levF,mixW=W-levW;
-  const wgF=Math.min(WG*F,mixF),whiteF=mixF-wgF,wwF=WG?wgF*WW/WG:0,ryF=wgF-wwF;
+  const SB=stBlend(),levWWF=levF*SB.ww,levRYF=levF*SB.rye;
+  let wwF=Math.max(0,WW*F-levWWF),ryF=Math.max(0,RY*F-levRYF);if(wwF+ryF>mixF){const k=mixF/(wwF+ryF);wwF*=k;ryF*=k}
+  const wgF=wwF+ryF,whiteF=mixF-wgF;
   const addG=A*F, total=F+W+salt+addG;
   AI.forEach(x=>{$('a'+x.i+'h').textContent=`${g(x.pc/100*F)} · typical ${x.lo}–${x.hi}%`});
   $('perLoaf').textContent=addG>0.5?`+ ${g(addG)} add-ins = ${g(total)}${n>1?` · ${g(total/n)} per loaf`:''}`:(n>1?`${g(total/n)} per loaf`:'');$('tDough').textContent=g(total);$('tFlour').textContent=g(F);$('tWater').textContent=g(W);
   const rows=[
     [fname,whiteF,whiteF/F,''],
-    ['Whole wheat flour',wwF,wwF/F,''],
-    ['Rye flour',ryF,ryF/F,''],
+    ['Whole wheat flour',wwF,wwF/F,levWWF>0.5?`+ ${g(levWWF)} more from the levain`:''],
+    ['Rye flour',ryF,ryF/F,levRYF>0.5?`+ ${g(levRYF)} more from the levain`:''],
     ['Water',mixW,mixW/F,'reserve ~5% for mixing in with salt'],
     ['Levain',lev,L,`${g(levF)} flour + ${g(levW)} water`],
     ['Salt',salt,S,''],
@@ -408,7 +424,7 @@ function calc(){
   const useBox=$('box').value.trim()!=='';
   const fermC=useBox?toC(val('box')):roomC;
   const tf=Math.pow(2,(24-fermC)/8);
-  const peak=clamp((4+2.2*Math.log2(Math.max(1,rf/rs)))*tf*scK().k,1,30);
+  const peak=clamp((4+2.2*Math.log2(Math.max(1,rf/rs)))*tf*stBlend().f*scK().k,1,30);
   const rt=v=>r1(v).replace(/\.0$/,'');
   $('levKv').innerHTML=`<dt>Ratio</dt><dd>${rt(rs)} : ${rt(rf)} : ${rt(rw)}</dd><dt>Ripe starter</dt><dd>${g(seed)}</dd><dt>New flour</dt><dd>${g(nf)}</dd><dt>New water</dt><dd>${g(nw)}</dd><dt>Build makes</dt><dd>${g(need)}</dd><dt>Levain hydration</dt><dd>${Math.round(LH*100)}%</dd><dt>Peaks in about</dt><dd class="hl">${hrs(peak)}</dd>`+
     (!custom?`<dt style="grid-column:1/-1;font-size:12px">Includes about 10% extra plus 15 g to keep as next time's starter.</dt>`:
@@ -497,7 +513,7 @@ function calc(){
   save();
 }
 
-const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','buildG','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt'];
+const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','buildG','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt','stName','stWW','stRye'];
 function save(){try{const o={unit,anchor,scMode:SC.mode};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW';if(o.scMode==='two')scSetMode('two')}catch(e){}}
 
@@ -571,7 +587,8 @@ function scMeasure(){
   if(!(fn>0)||!(ff>0)||!isFinite(fn)||!isFinite(ff))return null;return fn/ff-1;
 }
 let SCLOG=[];try{SCLOG=JSON.parse(localStorage.getItem('sd-starter-log')||'[]')||[]}catch(e){SCLOG=[]}
-function scModel(ratio,tC){return clamp((4+2.2*Math.log2(Math.max(1,ratio)))*Math.pow(2,(24-tC)/8),2,24)}
+function stBlend(){const ww=clamp(val('stWW'),0,100)/100,rye=clamp(val('stRye'),0,100-clamp(val('stWW'),0,100))/100;return {ww,rye,f:Math.max(.6,1-0.15*ww-0.3*rye)}}
+function scModel(ratio,tC){return clamp((4+2.2*Math.log2(Math.max(1,ratio)))*Math.pow(2,(24-tC)/8)*stBlend().f,1.5,24)}
 function scK(){const o=SCLOG.filter(e=>e.peakObs&&e.el>0).map(e=>e.el/scModel(e.ratio,e.tC)).sort((a,b)=>a-b);
   if(!o.length)return {k:1,n:0};const m=o.length%2?o[(o.length-1)/2]:(o[o.length/2-1]+o[o.length/2])/2;return {k:clamp(m,0.4,2.5),n:o.length}}
 function scSaveLog(){SCLOG=SCLOG.slice(-60);try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}if(SCSYNC.ref)scPush()}
@@ -624,7 +641,9 @@ async function scAsk(){
   if(SC.mode==='two'&&!fb&&SC.shots.Feed.url){try{fb=await (await fetch(SC.shots.Feed.url)).blob()}catch(e){fb=null}}
   const two=SC.mode==='two'&&fb;if(two)imgs.push(fb);
   const c=scContext(),R=scMeasure();
-  const hist=c.K.n?`This baker's log of ${c.K.n} earlier check${c.K.n>1?'s':''} shows this starter peaks about ${Math.round(Math.abs(c.K.k-1)*100)}% ${c.K.k<1?'faster':'slower'} than typical, so at this ratio and temperature it should peak around ${c.peak.toFixed(1)} hours after feeding. `:`At that ratio and temperature a typical starter peaks around ${c.peak.toFixed(1)} hours after feeding. `;
+  const SBx=stBlend(),nm=$('stName').value.trim();
+  const who=`The starter${nm?` (named "${nm.slice(0,40).replace(/["\\]/g,'')}")`:''} is fed with ${Math.round(SBx.ww*100)}% whole wheat, ${Math.round(SBx.rye*100)}% rye and the rest white flour; whole wheat and especially rye make a starter rise faster, look darker and more speckled, and have a denser, pastier texture with smaller bubbles than an all-white starter. `;
+  const hist=who+(c.K.n?`This baker's log of ${c.K.n} earlier check${c.K.n>1?'s':''} shows this starter peaks about ${Math.round(Math.abs(c.K.k-1)*100)}% ${c.K.k<1?'faster':'slower'} than typical, so at this ratio and temperature it should peak around ${c.peak.toFixed(1)} hours after feeding. `:`At that ratio, temperature and flour blend a typical starter peaks around ${c.peak.toFixed(1)} hours after feeding. `);
   const prompt=`You are an experienced sourdough baker looking at photos of a home baker's starter to judge where it is in its rise-and-fall cycle and whether it's ready to use. `+
     `Image 1 is the starter in its jar now.${two?' Image 2 is the same jar right after feeding: compare the two, including bubble activity.':''}\n`+
     `Context: fed at 1:${c.ratio}:${c.ratio} (starter:flour:water by weight), ${c.el!=null?`about ${c.el.toFixed(1)} hours ago`:'feeding time unknown'}, kept at about ${Math.round(fromC(c.tC))}°${unit}. `+hist+
@@ -749,13 +768,29 @@ function applyFeed(meta,blob){
 }
 (async()=>{const rec=await idbGet('feed');if(rec&&rec.meta&&(!FEED.meta||rec.meta.savedAt>FEED.meta.savedAt))applyFeed(rec.meta,rec.blob||null)})();
 
+// ---------- My starter: name and flour blend ----------
+const PROF={meta:null};
+try{PROF.meta=JSON.parse(localStorage.getItem('sd-starter-prof')||'null')}catch(e){}
+function stShow(){
+  const nm=$('stName').value.trim(),b=stBlend(),white=Math.round((1-b.ww-b.rye)*100);
+  $('stTitle').textContent=nm?' · '+nm:'';
+  const parts=[];if(b.ww)parts.push(`${Math.round(b.ww*100)}% whole wheat`);if(b.rye)parts.push(`${Math.round(b.rye*100)}% rye`);
+  $('stBlend').textContent=parts.length?`${white}% white, ${parts.join(', ')}${b.f<0.97?` · peaks about ${Math.round((1-b.f)*100)}% sooner than all-white`:''}`:'All white flour';
+}
+function saveProf(){PROF.meta={savedAt:Date.now(),name:$('stName').value.trim().slice(0,40),ww:$('stWW').value,rye:$('stRye').value};
+  try{localStorage.setItem('sd-starter-prof',JSON.stringify(PROF.meta))}catch(e){}if(SCSYNC.ref)scPush()}
+function applyProf(m){PROF.meta={savedAt:m.savedAt,name:String(m.name||'').slice(0,40),ww:String(m.ww??''),rye:String(m.rye??'')};
+  $('stName').value=PROF.meta.name;$('stWW').value=PROF.meta.ww;$('stRye').value=PROF.meta.rye;
+  try{localStorage.setItem('sd-starter-prof',JSON.stringify(PROF.meta))}catch(e){}stShow();calc()}
+['stName','stWW','stRye'].forEach(id=>{$(id).addEventListener('input',stShow);$(id).addEventListener('change',saveProf)});
+
 // Sync the log to the viewer's Claude account (Claude-hosted app only)
 function scSyncNote(){const el=$('logSync');if(!el)return;
   el.textContent=SCSYNC.state==='cloud'?'Synced to your Claude account, so it\'s the same on every device you sign in on.':SCSYNC.state==='waiting'?'Connecting to your Claude account… showing this device\'s log for now.':SCSYNC.state==='offline'?'Couldn\'t reach your Claude account. Showing and saving this device\'s log; it will sync next time.':'Saved on this device.'}
 async function scPush(){
   if(!SCSYNC.ref)return;if(SCSYNC.busy){SCSYNC.again=true;return}
   SCSYNC.busy=true;
-  try{do{SCSYNC.again=false;await SCSYNC.ref.set({entries:SCLOG.slice(-60),feed:FEED.meta||null,updated:Date.now()})}while(SCSYNC.again)}
+  try{do{SCSYNC.again=false;await SCSYNC.ref.set({entries:SCLOG.slice(-60),feed:FEED.meta||null,starter:PROF.meta||null,updated:Date.now()})}while(SCSYNC.again)}
   catch(e){if(e&&e.code==='quota_exceeded'){const f=$('logFlash');if(f)f.textContent='Your Claude account log is full; older entries will be trimmed.'}
     else if(e&&(e.code==='revoked'||e.code==='not_granted'||e.code==='invalid_argument')){SCSYNC.ref=null;SCSYNC.state='local';scSyncNote()}}
   finally{SCSYNC.busy=false}
@@ -773,7 +808,7 @@ async function scInitSync(){
     ref.onSnapshot(snap=>{
       if(snap.metadata&&snap.metadata.hasPendingWrites)return;
       const cloud=snap.exists&&Array.isArray((snap.data()||{}).entries)?snap.data().entries.filter(e=>e&&typeof e.t==='number'):[];
-      const cf=snap.exists?(snap.data()||{}).feed:null;
+      const cf=snap.exists?(snap.data()||{}).feed:null;const cp=snap.exists?(snap.data()||{}).starter:null;
       if(first){
         if(snap.metadata&&snap.metadata.fromCache&&!cloud.length)return; // wait for the store's answer before merging
         first=false;clearTimeout(timer);
@@ -785,10 +820,12 @@ async function scInitSync(){
         const lf=FEED.meta;
         if(cf&&typeof cf.savedAt==='number'&&(!lf||cf.savedAt>lf.savedAt))applyFeed(cf,null);
         else if(lf&&(!cf||lf.savedAt>(cf.savedAt||0))){saveFeed(!!SC.shots.Feed.file&&!lf.assetId,true);}
+        if(cp&&typeof cp.savedAt==='number'&&(!PROF.meta||cp.savedAt>PROF.meta.savedAt))applyProf(cp);else if(PROF.meta&&(!cp||PROF.meta.savedAt>(cp.savedAt||0)))scPush();
         if(merged.length!==cloud.length)scPush();
       }else{
         SCLOG=cloud.slice(-60);SCSYNC.state='cloud';
         if(cf&&typeof cf.savedAt==='number'&&(!FEED.meta||cf.savedAt>FEED.meta.savedAt))applyFeed(cf,null);
+        if(cp&&typeof cp.savedAt==='number'&&(!PROF.meta||cp.savedAt>PROF.meta.savedAt))applyProf(cp);
         try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}
       }
       scSyncNote();scRenderLog();calc();feedNote();
@@ -803,7 +840,7 @@ scInitAI();
 document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
 // Scrolling over a focused number box shouldn't change its value
 document.querySelectorAll('input[type=number]').forEach(e=>e.addEventListener('wheel',()=>{if(document.activeElement===e)e.blur()},{passive:true}));
-load();prevT=[1,2,3].map(i=>$('a'+i+'t').value);calc();
+load();prevT=[1,2,3].map(i=>$('a'+i+'t').value);calc();stShow();
 </script>
 </body>
 </html>
