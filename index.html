@@ -97,6 +97,10 @@ tr.addin td{background:var(--ok-soft)}
 ol.sched{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 ol.sched li{display:grid;grid-template-columns:92px 1fr;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line)}
 ol.sched li:last-child{border-bottom:0}
+ol.sched li.done{opacity:.55}
+ol.sched li.done time::after{content:' ✓';color:var(--rye)}
+#mixRow.overridden .num{opacity:.5}
+#mixRow .hint{grid-column:1/-1;margin-top:-2px;font-size:12px;color:var(--crust)}
 ol.sched time{font:500 14px var(--mono);color:var(--crust);font-variant-numeric:tabular-nums}
 ol.sched time small{display:block;font:400 11px var(--body);color:var(--muted)}
 ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
@@ -230,7 +234,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     <div class="f"><label for="flourT">Flour temp</label><div class="num"><input id="flourT" type="number" step="1" value="72"><i class="tu">°F</i></div></div>
     <div class="f"><label for="ddt">Target dough temp</label><div class="num"><input id="ddt" type="number" step="1" value="78"><i class="tu">°F</i></div></div>
     <div class="f"><label for="mixer">Mixing</label><div class="num"><select id="mixer"><option value="hand">By hand</option><option value="mixer">Stand mixer</option></select></div></div>
-    <div class="f dt"><label for="mixAt">Mix time</label><div class="num"><input id="mixAt" type="time" value="09:00"></div></div>
+    <div class="f dt" id="mixRow"><label for="mixAt">Mix time</label><div class="num"><input id="mixAt" type="time" value="09:00"></div><span class="hint" id="mixHint" style="text-align:left;font-family:var(--body)"></span></div>
   </fieldset>
   <div class="row2">
     <button type="button" class="btn" data-p="country">Country loaf</button>
@@ -400,6 +404,8 @@ function readAddins(){
 }
 
 function fmtTime(d){return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}
+function dayWord(d){const t=new Date();t.setHours(0,0,0,0);const x=new Date(d);x.setHours(0,0,0,0);const n=Math.round((x-t)/864e5);
+  return n===0?'':n===1?' tomorrow':n===-1?' yesterday':' '+new Date(d).toLocaleDateString([], {weekday:'short'})}
 function dayTag(d,base){const n=Math.round((new Date(d).setHours(0,0,0,0)-new Date(base).setHours(0,0,0,0))/864e5);return n===0?'':n===1?'next day':n===-1?'day before':(n>0?'+':'')+n+' days'}
 function hrs(h){const H=Math.floor(h),M=Math.round((h-H)*60/5)*5;return M===60?(H+1)+'h':((H?H+'h ':'')+(M?M+'m':'')).trim()||'0m'}
 
@@ -474,14 +480,21 @@ function calc(){
   const rise=doughC>=26?'30–50%':doughC>=24?'50%':doughC>=22?'50–75%':'75–100%';
 
   // Schedule
-  const [hh,mm]=($('mixAt').value||'09:00').split(':').map(Number);
-  const mix=new Date();mix.setHours(hh,mm,0,0);
   const add=(d,h)=>new Date(d.getTime()+h*36e5);
-  const feed=add(mix,-peak), autoly=add(mix,-0.75);
+  // Anchor the plan: a levain that's already built sets the mix time; otherwise a recent feed of the starter does; otherwise the Mix time field.
+  const fresh=fv=>{if(!fv)return null;const d=new Date(fv);const age=(Date.now()-d)/36e5;return isNaN(d)||age<0||age>48?null:d};
+  const lvD=fresh($('lvAt').value),mD=fresh($('fedAt').value),mpk=mPeak();
+  let mix,feed,mFeed,anchorBy='';
+  if(lvD){feed=lvD;mix=add(lvD,peak);mFeed=mD&&mD.getTime()<=lvD.getTime()?mD:add(lvD,-mpk);anchorBy='levain'}
+  else if(mD){mFeed=mD;feed=add(mD,mpk);mix=add(feed,peak);anchorBy='master'}
+  else{const [hh,mm]=($('mixAt').value||'09:00').split(':').map(Number);mix=new Date();mix.setHours(hh,mm,0,0);feed=add(mix,-peak);mFeed=add(feed,-mpk)}
+  const autoly=add(mix,-0.75);
+  $('mixRow').classList.toggle('overridden',!!anchorBy);
+  $('mixHint').textContent=anchorBy==='levain'?`Following your levain: mix around ${fmtTime(mix)}${dayWord(mix)}. Clear the levain's Built time to plan by this field instead.`:anchorBy==='master'?`Following ${mName()}'s feed: levain around ${fmtTime(feed)}${dayWord(feed)}, mix around ${fmtTime(mix)}${dayWord(mix)}.`:'';
   const bulkEnd=add(mix,bulk), shape=add(bulkEnd,0.5), bake=add(shape,14);
   const ev=[
-    [add(feed,-mPeak()),`<b>Feed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value} so it peaks when you build the levain`],
-    [feed,`<b>Build the levain</b> from ${esc(mName())}: ${g(seed)} ${esc(mName())} + ${flourList(nf)} + ${g(nw)} water`],
+    [mFeed,mD&&(anchorBy==='master'||mD.getTime()<=feed.getTime())?`<b>Fed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value}`:`<b>Feed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value} so it peaks when you build the levain`],
+    [feed,`<b>${anchorBy==='levain'?'Built':'Build'} the levain</b> from ${esc(mName())}: ${g(seed)} ${esc(mName())} + ${flourList(nf)} + ${g(nw)} water`],
     [autoly,`<b>Autolyse</b> (optional): flour and water only, ${Math.round(wDisp)}°${unit} water`],
     ...(AI.some(x=>x.soak)?[[add(mix,-1),`<b>Soak</b> ${AI.filter(x=>x.soak).map(x=>x.l||x.n.toLowerCase()).join(' and ')} (see Suggestions)`]]:[]),
     [mix,`<b>Mix</b> in levain, then salt with the reserved water${(()=>{const m=AI.filter(x=>x.mix||x.split);return m.length?`, plus the ${m.map(x=>x.split?'grated half of the '+(x.l||x.n.toLowerCase()):(x.l||x.n.toLowerCase())).join(' and ')}`:''})()}`],
@@ -492,7 +505,8 @@ function calc(){
     [add(bake,-1),`<b>Preheat</b> oven and Dutch oven to ${unit==='F'?'500°F':'260°C'}`],
     [bake,`<b>Bake</b> 20 min lid on, then ${unit==='F'?'450°F':'230°C'} lid off 20–25 min`],
   ];
-  $('sched').innerHTML=ev.map(([d,t])=>{const tag=dayTag(d,mix);return `<li><time>${fmtTime(d)}${tag?`<small>${tag}</small>`:''}</time><p>${t}</p></li>`}).join('');
+  const nowT=Date.now();
+  $('sched').innerHTML=ev.map(([d,t])=>{const tag=dayWord(d).replace(/^ /,'');return `<li${anchorBy&&d.getTime()<nowT-5*6e4?' class="done"':''}><time>${fmtTime(d)}${tag?`<small>${tag}</small>`:''}</time><p>${t}</p></li>`}).join('');
 
   // Suggestions
   const N=[];const ok=(t,b)=>N.push(['',t,b]),warn=(t,b)=>N.push(['warn',t,b]);
