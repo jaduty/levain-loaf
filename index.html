@@ -481,19 +481,18 @@ function calc(){
 
   // Schedule
   const add=(d,h)=>new Date(d.getTime()+h*36e5);
-  // Anchor the plan: a levain that's already built sets the mix time; otherwise a recent feed of the starter does; otherwise the Mix time field.
+  // Anchor the plan: a levain that's already built sets the mix time; otherwise plan back from the Mix time field.
   const fresh=fv=>{if(!fv)return null;const d=new Date(fv);const age=(Date.now()-d)/36e5;return isNaN(d)||age<0||age>48?null:d};
   const lvD=fresh($('lvAt').value),mD=fresh($('fedAt').value),mpk=mPeak();
   let mix,feed,mFeed,anchorBy='';
   if(lvD){feed=lvD;mix=add(lvD,peak);mFeed=mD&&mD.getTime()<=lvD.getTime()?mD:add(lvD,-mpk);anchorBy='levain'}
-  else if(mD){mFeed=mD;feed=add(mD,mpk);mix=add(feed,peak);anchorBy='master'}
   else{const [hh,mm]=($('mixAt').value||'09:00').split(':').map(Number);mix=new Date();mix.setHours(hh,mm,0,0);feed=add(mix,-peak);mFeed=add(feed,-mpk)}
   const autoly=add(mix,-0.75);
   $('mixRow').classList.toggle('overridden',!!anchorBy);
-  $('mixHint').textContent=anchorBy==='levain'?`Following your levain: mix around ${fmtTime(mix)}${dayWord(mix)}. Clear the levain's Built time to plan by this field instead.`:anchorBy==='master'?`Following ${mName()}'s feed: levain around ${fmtTime(feed)}${dayWord(feed)}, mix around ${fmtTime(mix)}${dayWord(mix)}.`:'';
+  $('mixHint').textContent=anchorBy==='levain'?`Following your levain: mix around ${fmtTime(mix)}${dayWord(mix)}. Clear the levain's Built time to plan by this field instead.`:'';
   const bulkEnd=add(mix,bulk), shape=add(bulkEnd,0.5), bake=add(shape,14);
   const ev=[
-    [mFeed,mD&&(anchorBy==='master'||mD.getTime()<=feed.getTime())?`<b>Fed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value}`:`<b>Feed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value} so it peaks when you build the levain`],
+    [mFeed,anchorBy==='levain'&&mD&&mD.getTime()<=feed.getTime()?`<b>Fed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value}`:`<b>Feed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value} so it peaks when you build the levain`],
     [feed,`<b>${anchorBy==='levain'?'Built':'Build'} the levain</b> from ${esc(mName())}: ${g(seed)} ${esc(mName())} + ${flourList(nf)} + ${g(nw)} water`],
     [autoly,`<b>Autolyse</b> (optional): flour and water only, ${Math.round(wDisp)}°${unit} water`],
     ...(AI.some(x=>x.soak)?[[add(mix,-1),`<b>Soak</b> ${AI.filter(x=>x.soak).map(x=>x.l||x.n.toLowerCase()).join(' and ')} (see Suggestions)`]]:[]),
