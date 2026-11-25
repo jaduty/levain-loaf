@@ -106,6 +106,37 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
 .notes li b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px;color:var(--rye)}
 .notes li.warn b{color:var(--warn)}
 .credit{margin:14px 0 0;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;max-width:75ch}
+/* Starter check */
+.sc-top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:14px}
+.sc-top .f{display:flex;gap:8px;align-items:center}
+.sc-top label{font-size:13px;color:var(--muted)}
+.sc-top .num{width:auto}
+.sc-top .num input,.sc-top .num select{text-align:left}
+.sc-shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px}
+.shot{display:flex;flex-direction:column;gap:8px;min-width:0}
+.shot h3{margin:0;font:600 11px var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.shot .pick{display:flex;gap:8px;flex-wrap:wrap}
+.shot input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.pic{position:relative;border:1px dashed var(--line);border-radius:10px;overflow:hidden;background:var(--bg);min-height:120px;display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:0;cursor:crosshair;touch-action:manipulation}
+.pic img{display:block;width:100%;max-height:420px;object-fit:contain;user-select:none;-webkit-user-drag:none}
+.pic .mk{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--c);pointer-events:none}
+.pic .mk span{position:absolute;left:6px;top:-20px;font:600 11px var(--body);color:var(--bg);background:var(--c);padding:1px 6px;border-radius:4px;white-space:nowrap}
+.prompt{font-size:13px;color:var(--muted);min-height:1.4em}
+.prompt b{color:var(--crust)}
+.sc-out{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+.verdict{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:12px 14px;border-radius:10px;background:var(--bg);border:1px solid var(--line)}
+.pill{font:600 11px var(--body);text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:999px;background:var(--line);color:var(--ink)}
+.pill.ok{background:var(--ok-soft);color:var(--rye)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.go{background:var(--crust);color:var(--bg)}
+.verdict .big{font:500 22px var(--mono);font-variant-numeric:tabular-nums}
+.verdict p{margin:0;flex-basis:100%;font-size:14px}
+.ai{padding:12px 14px;border-radius:10px;background:var(--crust-soft)}
+.ai[hidden]{display:none!important}
+.ai h3{margin:0 0 6px;font:600 11px var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--crust)}
+.ai ul{margin:6px 0;padding-left:18px;font-size:14px}
+.ai p{margin:0;font-size:14px}
+.sc-note{font-size:12px;color:var(--muted);margin:10px 0 0;max-width:75ch}
 .foot{margin-top:28px;color:var(--muted);font-size:12px;max-width:75ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -202,6 +233,39 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
   </div>
 
   <section>
+    <h2>Starter check</h2>
+    <div class="card">
+      <div class="sc-top">
+        <div class="seg" role="group" aria-label="How to measure">
+          <button type="button" id="scBand" aria-pressed="true">Start line in photo</button><button type="button" id="scTwo" aria-pressed="false">Before &amp; after photos</button>
+        </div>
+        <div class="f"><label for="scRatio">Fed at</label><div class="num"><select id="scRatio"><option value="1">1:1:1</option><option value="2">1:2:2</option><option value="3">1:3:3</option><option value="5">1:5:5</option><option value="10">1:10:10</option></select></div></div>
+        <div class="f"><label for="fedAt">Fed</label><div class="num"><input id="fedAt" type="datetime-local"></div></div>
+      </div>
+      <div class="sc-shots">
+        <div class="shot" id="shotFeed" hidden>
+          <h3>Right after feeding</h3>
+          <div class="pick"><label class="btn" for="fileFeed">Take or choose photo</label><input id="fileFeed" type="file" accept="image/*" capture="environment"><button type="button" class="btn" id="clrFeed" hidden>Redo taps</button></div>
+          <div class="pic" id="picFeed">No photo yet</div>
+          <div class="prompt" id="promptFeed"></div>
+        </div>
+        <div class="shot">
+          <h3>Starter now</h3>
+          <div class="pick"><label class="btn" for="fileNow">Take or choose photo</label><input id="fileNow" type="file" accept="image/*" capture="environment"><button type="button" class="btn" id="clrNow" hidden>Redo taps</button></div>
+          <div class="pic" id="picNow">No photo yet</div>
+          <div class="prompt" id="promptNow"></div>
+        </div>
+      </div>
+      <div class="sc-out">
+        <div class="verdict" id="scVerdict"><span class="pill">Waiting</span><p>Take a photo of your jar from the side, at eye level. Put a rubber band or a mark at the starter's level when you feed it.</p></div>
+        <div><button type="button" class="btn" id="askAI" hidden>Ask Claude about this photo</button></div>
+        <div class="ai" id="aiOut" hidden></div>
+      </div>
+      <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. Photos stay on your device and aren't saved.<span id="aiNote"></span></p>
+    </div>
+  </section>
+
+  <section>
     <h2>Timeline</h2>
     <div class="card"><ol class="sched" id="sched"></ol></div>
   </section>
@@ -271,7 +335,7 @@ function readAddins(){
 
 function fmtTime(d){return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}
 function dayTag(d,base){const n=Math.round((new Date(d).setHours(0,0,0,0)-new Date(base).setHours(0,0,0,0))/864e5);return n===0?'':n===1?'next day':n===-1?'day before':(n>0?'+':'')+n+' days'}
-function hrs(h){const H=Math.floor(h),M=Math.round((h-H)*60/5)*5;return M===60?(H+1)+'h':(H?H+'h ':'')+(M?M+'m':'').trim()||'0m'}
+function hrs(h){const H=Math.floor(h),M=Math.round((h-H)*60/5)*5;return M===60?(H+1)+'h':((H?H+'h ':'')+(M?M+'m':'')).trim()||'0m'}
 
 function calc(){
   const n=Math.max(1,Math.round(val('loaves')));
@@ -401,12 +465,13 @@ function calc(){
   const per=total/n;
   if(per>1100) ok('Large loaves',`${g(per)} needs a 10-inch banneton and 5–10 more minutes lid-off.`);
   $('notes').innerHTML=N.map(([c,t,b])=>`<li class="${c}"><b>${t}</b>${b}</li>`).join('');
+  starterCheck();
   save();
 }
 
-const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','a1t','a1p','a2t','a2p','a3t','a3p'];
-function save(){try{const o={unit,anchor};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}}
-function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW'}catch(e){}}
+const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt'];
+function save(){try{const o={unit,anchor,scMode:SC.mode};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}}
+function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW';if(o.scMode==='two')scSetMode('two')}catch(e){}}
 
 function setUnit(u,convert=true){
   if(convert&&u!==unit){['room','box','flourT','ddt'].forEach(i=>{if($(i).value.trim()==='')return;const v=val(i);$(i).value=Math.round(u==='F'?cToF(v):fToC(v))})}
@@ -421,6 +486,136 @@ $('combo').addEventListener('input',()=>{const c=COMBO[$('combo').value];if(!c)r
   const cs=c.reduce((a,x)=>a+x[1]*((ADD[x[0]].sw)||0),0);$('salt').value=r1(Math.max(1.2,2-cs));
   for(let i=1;i<=3;i++){const x=c[i-1];$('a'+i+'t').value=x?x[0]:'';$('a'+i+'p').value=x?x[1]:'';prevT[i-1]=x?x[0]:''}
   $('combo').value=''});
+// ---------- Starter check ----------
+const SC={mode:'band',shots:{Now:{url:null,file:null,taps:[]},Feed:{url:null,file:null,taps:[]}}};
+const SC_STEPS={band:{Now:['Bottom of the starter','Top of the starter','Start line (rubber band)']},
+  two:{Now:['Bottom of the starter','Top of the starter','Jar rim (same spot in both photos)'],Feed:['Bottom of the starter','Top of the starter','Jar rim (same spot in both photos)']}};
+const SC_COL=['var(--muted)','var(--crust)','var(--rye)'];
+function scSteps(k){return (SC_STEPS[SC.mode][k])||[]}
+function scDraw(k){
+  const sh=SC.shots[k],pic=$('pic'+k);
+  if(!sh.url){pic.textContent='No photo yet';$('prompt'+k).textContent='';$('clr'+k).hidden=true;return}
+  let img=pic.querySelector('img');
+  if(!img){pic.textContent='';img=document.createElement('img');img.alt='Starter photo';pic.append(img)}
+  if(img.src!==sh.url)img.src=sh.url;
+  pic.querySelectorAll('.mk').forEach(m=>m.remove());
+  const steps=scSteps(k);
+  sh.taps.forEach((y,i)=>{const m=document.createElement('div');m.className='mk';m.style.top=(y*100)+'%';m.style.setProperty('--c',SC_COL[i]);
+    const t=document.createElement('span');t.textContent=steps[i].split(' (')[0];m.append(t);pic.append(m)});
+  const next=steps[sh.taps.length];
+  const pr=$('prompt'+k);pr.textContent='';
+  if(next){pr.append('Tap the photo: ');const b=document.createElement('b');b.textContent=next.toLowerCase();pr.append(b)}else pr.textContent='All marked.';
+  $('clr'+k).hidden=!sh.taps.length;
+}
+function scTap(k,e){
+  const sh=SC.shots[k],img=$('pic'+k).querySelector('img');if(!img)return;
+  if(sh.taps.length>=scSteps(k).length)return;
+  const r=img.getBoundingClientRect();
+  // object-fit:contain may letterbox; map the tap into the visible image
+  const nat=img.naturalWidth/img.naturalHeight||1,box=r.width/r.height;
+  let top=r.top,h=r.height;if(box<nat){h=r.width/nat;top=r.top+(r.height-h)/2}
+  const y=(e.clientY-top)/h;if(y<0||y>1)return;
+  sh.taps.push(y);scDraw(k);starterCheck();
+}
+function scPick(k,file){
+  const sh=SC.shots[k];if(!file)return;
+  if(sh.url)URL.revokeObjectURL(sh.url);
+  sh.url=URL.createObjectURL(file);sh.file=file;sh.taps=[];
+  if(k==='Feed'&&file.lastModified&&!$('fedAt').value)$('fedAt').value=toLocalInput(new Date(file.lastModified));
+  $('aiOut').hidden=true;scDraw(k);starterCheck();
+}
+function toLocalInput(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
+function scSetMode(m){SC.mode=m;$('scBand').setAttribute('aria-pressed',m==='band');$('scTwo').setAttribute('aria-pressed',m==='two');
+  $('shotFeed').hidden=m!=='two';
+  ['Now','Feed'].forEach(k=>{const sh=SC.shots[k];sh.taps=sh.taps.slice(0,scSteps(k).length);scDraw(k)});starterCheck();save()}
+function scMeasure(){
+  const n=SC.shots.Now.taps,f=SC.shots.Feed.taps;
+  if(SC.mode==='band'){if(n.length<3)return null;const h=n[0]-n[1],h0=n[0]-n[2];if(h0<=0.01||h<=0)return null;return h/h0-1}
+  if(n.length<3||f.length<3)return null;
+  const fn=(n[0]-n[1])/(n[0]-n[2]),ff=(f[0]-f[1])/(f[0]-f[2]);
+  if(!(fn>0)||!(ff>0)||!isFinite(fn)||!isFinite(ff))return null;return fn/ff-1;
+}
+function scContext(){
+  const ratio=+$('scRatio').value||1;
+  const roomC=toC(val('room')),useBox=$('box').value.trim()!=='';const tC=useBox?toC(val('box')):roomC;
+  const tf=Math.pow(2,(24-tC)/8);
+  const peak=clamp((4+2.2*Math.log2(Math.max(1,ratio)))*tf,2,24);
+  const fv=$('fedAt').value;const el=fv?(Date.now()-new Date(fv).getTime())/36e5:null;
+  return {ratio,tC,useBox,peak,el:el!=null&&el>=0&&el<72?el:null};
+}
+function starterCheck(){
+  const v=$('scVerdict');if(!v)return;
+  const R=scMeasure(),c=scContext();
+  const tTxt=`${Math.round(fromC(c.tC))}°${unit}${c.useBox?' in the proofing box':''}`;
+  const exp=`At 1:${c.ratio}:${c.ratio} and ${tTxt}, it usually peaks about ${hrs(c.peak)} after feeding.`;
+  let pill='',cls='',big='',msg='';
+  if(R==null){
+    if(!SC.shots.Now.url){v.innerHTML='';const p=document.createElement('span');p.className='pill';p.textContent='Waiting';const t=document.createElement('p');
+      t.textContent=(c.el!=null?`Fed ${hrs(c.el)} ago. `:'')+exp+' Take a side photo of the jar to measure the rise.';v.append(p,t);return}
+    pill='Mark the photo';msg=(c.el!=null?`Fed ${hrs(c.el)} ago. `:'')+exp;
+  }else{
+    const pct=Math.round(R*100),late=c.el!=null&&c.el>c.peak*1.4,early=c.el!=null&&c.el<c.peak*0.7;
+    big=`${pct>=0?'+':''}${pct}%`;
+    if(R<0.4){pill='Still rising';msg=c.el!=null&&c.el>c.peak*1.3?`Only ${pct}% after ${hrs(c.el)}. It's running slow: move it somewhere warmer, or check it's had regular feeds.`:`Not ready yet. ${c.el!=null?`Check again in about ${hrs(Math.max(0.5,c.peak-c.el))}.`:exp}`}
+    else if(R<0.85){pill='Getting close';cls='ok';msg=late?`${pct}% after ${hrs(c.el)}, past when it usually peaks. If the top is flat or there's a streak above it on the glass, it has already peaked. Use it now or feed it.`:`Nearly there. Look for a domed top and lots of bubbles. ${c.el!=null&&c.el<c.peak?`Expected peak in about ${hrs(c.peak-c.el)}.`:''}`}
+    else{pill=late?'Use it now':'Ready';cls=late?'warn':'go';msg=late?`Doubled, and it's ${hrs(c.el)} since feeding, so it may be starting to fall. Use it now; if it's runny or smells sharp, feed it first.`:`Close to doubled${c.el!=null?` after ${hrs(c.el)}`:''}. This is the window to build your levain or mix.${early?' It rose faster than usual, so use it soon.':''}`}
+  }
+  v.innerHTML='';const p=document.createElement('span');p.className='pill'+(cls?' '+cls:'');p.textContent=pill;v.append(p);
+  if(big){const b=document.createElement('span');b.className='big';b.textContent=big;const l=document.createElement('span');l.style.cssText='font-size:13px;color:var(--muted)';l.textContent='rise'+(c.el!=null?` · ${hrs(c.el)} since feeding`:'');v.append(b,l)}
+  const t=document.createElement('p');t.textContent=msg;v.append(t);
+}
+// Ask Claude (only in the Claude-hosted app)
+let scSample=null,scCtl=null;
+async function scInitAI(){
+  try{
+    if(!window.claude||typeof window.claude.use!=='function')return;
+    const s=await window.claude.use('sample');if(!s)return;
+    const lim=await s.limits().catch(()=>null);if(!lim||!lim.images)return;
+    scSample=s;$('askAI').hidden=false;$('aiNote').textContent=' "Ask Claude" sends the photos to Claude for a second opinion and uses your Claude account.';
+  }catch(e){}
+}
+async function scAsk(){
+  if(!scSample)return;
+  const now=SC.shots.Now.file;const out=$('aiOut');
+  if(!now){out.hidden=false;out.textContent='Take a photo of the starter first.';return}
+  const imgs=[now];const two=SC.mode==='two'&&SC.shots.Feed.file;if(two)imgs.push(SC.shots.Feed.file);
+  const c=scContext(),R=scMeasure();
+  const prompt=`You are helping a home baker decide whether their sourdough starter is ready to use (at or near its peak). `+
+    `Image 1 is the starter in its jar now.${two?' Image 2 is the same jar right after feeding.':''}\n`+
+    `Context: fed at a ratio of 1:${c.ratio}:${c.ratio} (starter:flour:water by weight), ${c.el!=null?`about ${c.el.toFixed(1)} hours ago`:'feeding time unknown'}, kept at about ${Math.round(fromC(c.tC))}°${unit}. `+
+    `At that ratio and temperature it typically peaks around ${c.peak.toFixed(1)} hours after feeding. `+
+    `${R!=null?`The baker marked the photo${two?'s':''}, which measures a rise of about ${Math.round(R*100)}% since feeding (approximate).`:'No rise measurement is available.'}\n`+
+    `Look for: a rubber band or mark at the starting level; whether the top is domed, flat, or sunken; a film or streak on the glass above the current level (it rose higher and fell); bubble size and how far they reach; liquid on top. `+
+    `Reply with only a JSON object: {"verdict": "rising" | "peak" | "past_peak" | "hungry" | "unclear", "headline": "one short sentence", "seen": ["2-4 short observations from the photo"], "advice": "one or two sentences on what to do now"}. `+
+    `"peak" means use it now; "past_peak" means usable but falling; "hungry" means it needs a feed first. Use "unclear" if the photo doesn't show the starter clearly.`;
+  const btn=$('askAI');btn.disabled=true;out.hidden=false;out.textContent='Looking at your starter…';
+  scCtl=new AbortController();
+  try{
+    const r=await scSample.json(prompt,{images:imgs,signal:scCtl.signal});
+    const V={rising:['Still rising',''],peak:['Ready',' go'],past_peak:['Just past peak',' warn'],hungry:['Needs a feed',' warn'],unclear:['Unclear','']}[r&&r.verdict]||['Claude says',''];
+    out.innerHTML='';const h=document.createElement('h3');h.textContent="Claude's read";const pl=document.createElement('span');pl.className='pill'+V[1];pl.textContent=V[0];
+    const hl=document.createElement('p');hl.style.margin='8px 0 0';hl.style.fontWeight='600';hl.textContent=String(r&&r.headline||'');out.append(h,pl,hl);
+    if(r&&Array.isArray(r.seen)&&r.seen.length){const ul=document.createElement('ul');r.seen.slice(0,5).forEach(x=>{const li=document.createElement('li');li.textContent=String(x);ul.append(li)});out.append(ul)}
+    if(r&&r.advice){const a=document.createElement('p');a.textContent=String(r.advice);out.append(a)}
+  }catch(e){
+    const code=e&&e.code;
+    if(code==='not_granted'||code==='sampling_disabled'||code==='images_unavailable'||code==='capability_disabled'||code==='not_declared'){btn.hidden=true;out.textContent='Claude isn\'t available for photos here. The rise measurement above still works.'}
+    else if(code==='cancelled'){out.hidden=true}
+    else if(code==='rate_limited'){out.textContent='Claude is busy or you\'ve hit a usage limit. Try again in a little while.'}
+    else if(code==='image_rejected'){out.textContent='That photo couldn\'t be read. Try a JPEG or PNG under 20 MB.'}
+    else if(code==='invalid_json'){out.textContent=(e.text?String(e.text).slice(0,600):'Claude\'s answer came back garbled.')+' (Try again.)'}
+    else{out.textContent='Something went wrong reaching Claude. Try again in a moment.'}
+  }finally{btn.disabled=false}
+}
+['Now','Feed'].forEach(k=>{
+  $('file'+k).addEventListener('change',e=>{scPick(k,e.target.files&&e.target.files[0]);e.target.value=''});
+  $('pic'+k).addEventListener('click',e=>scTap(k,e));
+  $('clr'+k).addEventListener('click',()=>{SC.shots[k].taps=[];scDraw(k);starterCheck()});
+});
+$('scBand').onclick=()=>scSetMode('band');$('scTwo').onclick=()=>scSetMode('two');
+$('askAI').onclick=scAsk;
+setInterval(()=>{if(!document.hidden)starterCheck()},60000);
+scInitAI();
 document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
 // Scrolling over a focused number box shouldn't change its value
 document.querySelectorAll('input[type=number]').forEach(e=>e.addEventListener('wheel',()=>{if(document.activeElement===e)e.blur()},{passive:true}));
