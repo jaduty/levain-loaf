@@ -361,7 +361,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
         <div class="ai" id="aiOut" hidden></div>
       </div>
       <details class="sclog" id="scLog"><summary id="logSum">Log</summary><p id="logTxt"></p><p class="sc-note" id="logSync" style="margin:0 0 8px">Saved on this device.</p><div class="tblwrap"><table><thead><tr><th>When</th><th>Feed</th><th>Temp</th><th>Hours</th><th>Rise</th><th>Result</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div></details>
-      <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. The feeding time and before photo are kept, so you can close the app and come back later. The "now" photo isn't saved.<span id="aiNote"></span></p>
+      <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. The feeding time and both photos are kept, so you can close the app and come back later. Logging a check or tapping "I just fed it" clears both photos.<span id="aiNote"></span></p>
     </div>
   </section>
 
@@ -685,7 +685,7 @@ function scTap(k,e){
   const nat=img.naturalWidth/img.naturalHeight||1,box=r.width/r.height;
   let top=r.top,h=r.height;if(box<nat){h=r.width/nat;top=r.top+(r.height-h)/2}
   const y=(e.clientY-top)/h;if(y<0||y>1)return;
-  sh.taps.push(y);scDraw(k);starterCheck();if(k==='Feed')saveFeed(TG,false);
+  sh.taps.push(y);scDraw(k);starterCheck();saveFeed(TG,false);
 }
 async function scShrink(file){
   try{const bm=await createImageBitmap(file,{imageOrientation:'from-image'});const sc=Math.min(1,1600/Math.max(bm.width,bm.height));
@@ -700,7 +700,7 @@ async function scPick(k,file){
   sh.url=URL.createObjectURL(img);sh.file=img;sh.taps=[];
   if(k==='Feed'&&lm&&!timeInput(t).value){timeInput(t).value=toLocalInput(new Date(lm));calc()}
   if(t===TG){$('aiOut').hidden=true;SC.lastAI=null;scDraw(k);starterCheck()}
-  if(k==='Feed')saveFeed(t,true);
+  saveFeed(t,k);
 }
 function toLocalInput(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
 function scSetMode(m){const changed=SCT[TG].mode!==m;SC.mode=m;SCT[TG].mode=m;$('scBand').setAttribute('aria-pressed',m==='band');$('scTwo').setAttribute('aria-pressed',m==='two');
@@ -781,7 +781,8 @@ async function scInitAI(){
 }
 async function scAsk(){
   if(!scSample)return;
-  const now=SC.shots.Now.file;const out=$('aiOut');
+  let now=SC.shots.Now.file;const out=$('aiOut');
+  if(!now&&SC.shots.Now.url){try{now=await (await fetch(SC.shots.Now.url)).blob()}catch(e){now=null}}
   if(!now){out.hidden=false;out.textContent=SC.shots.Feed.url?`Your before photo is saved. Claude judges readiness from the "${$('hNow').textContent}" photo, so take that one later, when you want to know if it's ready, then ask again.`:`Take the "${$('hNow').textContent}" photo first.`;return}
   const imgs=[now];let fb=SC.shots.Feed.file;
   if(SC.mode==='two'&&!fb&&SC.shots.Feed.url){try{fb=await (await fetch(SC.shots.Feed.url)).blob()}catch(e){fb=null}}
@@ -850,14 +851,14 @@ async function scAsk(){
 ['Now','Feed'].forEach(k=>{
   $('file'+k).addEventListener('change',e=>{scPick(k,e.target.files&&e.target.files[0]);e.target.value=''});
   $('pic'+k).addEventListener('click',e=>scTap(k,e));
-  $('clr'+k).addEventListener('click',()=>{SC.shots[k].taps=[];scDraw(k);starterCheck();if(k==='Feed')saveFeed(TG,false)});
+  $('clr'+k).addEventListener('click',()=>{SC.shots[k].taps=[];scDraw(k);starterCheck();saveFeed(TG,false)});
 });
 $('scBand').onclick=()=>{scSetMode('band');saveFeed(TG,false)};$('scTwo').onclick=()=>{scSetMode('two');saveFeed(TG,false)};
 $('fedAt').addEventListener('change',()=>saveFeed('master',false));$('scRatio').addEventListener('change',()=>saveFeed('master',false));
 function newRound(t){
   ['Now','Feed'].forEach(k=>{const sh=SCT[t].shots[k];if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);sh.url=null;sh.file=null;sh.taps=[];if(t===TG)scDraw(k)});
   timeInput(t).value=toLocalInput(new Date());if(t===TG){$('aiOut').hidden=true;SC.lastAI=null}
-  calc();saveFeed(t,true);feedNote();
+  calc();saveFeed(t,'both');feedNote();
   const f=$('logFlash');if(f){f.textContent=t==='levain'?'Levain build time set to now.':'Feeding time set to now.';setTimeout(()=>{f.textContent=''},4000)}
 }
 $('mNew').onclick=()=>newRound('master');
@@ -880,8 +881,10 @@ function scLog(){
   const ai=SC.lastAI;const peakObs=(R!=null&&R>=0.85&&R<=1.6)||ai==='peak';
   const STG={just_fed:'Just fed',rising:'Rising',near_peak:'Near peak',peak:'Peak',falling:'Falling',collapsed:'Collapsed'};
   SCLOG.push({t:Date.now(),jar:c.jar,ratio:c.ratio,label:c.label,bf:c.bf,tC:c.tC,el:c.el,rise:R,result:ai?('Claude: '+(STG[ai]||ai)):(SC.last&&SC.last.pill)||'',peakObs});
-  scSaveLog();scRenderLog();calc();
-  const f=$('logFlash');f.textContent=(SCSYNC.state==='cloud'?'Logged to your Claude account.':'Logged.')+(peakObs?' This one counts toward the learned peak time.':'');setTimeout(()=>{f.textContent=''},4000);
+  scSaveLog();scRenderLog();
+  ['Now','Feed'].forEach(k=>{const sh=SC.shots[k];if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);sh.url=null;sh.file=null;sh.taps=[];scDraw(k)});
+  $('aiOut').hidden=true;SC.lastAI=null;saveFeed(TG,'both');calc();
+  const f=$('logFlash');f.textContent=(SCSYNC.state==='cloud'?'Logged to your Claude account.':'Logged.')+(peakObs?' This one counts toward the learned peak time.':'')+' Photos cleared for your next check.';setTimeout(()=>{f.textContent=''},4000);
 }
 $('logBtn').onclick=scLog;
 scRenderLog();
@@ -894,40 +897,49 @@ async function idbGet(k){try{const d=await idbOpen();return await new Promise((r
 function feedNote(){const el=$('feedSaved');if(!el)return;const J=SCT[TG],sh=J.shots.Feed;
   if(!sh.url){el.textContent='';return}
   el.textContent=SCSYNC.ref&&J.meta&&J.meta.assetId?'Saved to your Claude account.':'Saved on this device.'}
-async function saveFeed(t,photoChanged,quiet){
-  const J=SCT[t],prev=J.meta||{};
-  const meta={savedAt:quiet&&prev.savedAt?prev.savedAt:Date.now(),mode:J.mode,taps:J.shots.Feed.taps.slice(0,3),assetId:photoChanged?null:(prev.assetId||J.lastAsset||null)};
+// The before ("Feed") and after ("Now") photos travel together as a pair.
+const SHOTK={Feed:['assetId','taps','lastAsset'],Now:['nowAssetId','nowTaps','lastNowAsset']};
+const cleanTaps=v=>Array.isArray(v)?v.filter(x=>typeof x==='number'&&x>=0&&x<=1).slice(0,3):[];
+async function saveFeed(t,changed,quiet){
+  if(changed===true)changed='Feed';
+  const J=SCT[t],prev=J.meta||{},which=changed==='both'?['Feed','Now']:changed?[changed]:[];
+  const meta={savedAt:quiet&&prev.savedAt?prev.savedAt:Date.now(),mode:J.mode};
+  for(const k of ['Feed','Now']){const [a,tp,last]=SHOTK[k];meta[tp]=J.shots[k].taps.slice(0,3);meta[a]=which.includes(k)?null:(prev[a]||J[last]||null)}
   if(t==='master'){meta.fedAt=$('fedAt').value||'';meta.ratio=$('scRatio').value}
   else{meta.fedAt=$('lvAt').value||'';meta.ww=$('lvWW').value;meta.rye=$('lvRye').value}
   J.meta=meta;
-  const blob=J.shots.Feed.file||null;
-  idbSet(FEEDKEY[t],{meta,blob:photoChanged||blob?blob:undefined});
-  if(SCSYNC.ref&&SCASSETS&&photoChanged){
-    const old=J.lastAsset||prev.assetId;
+  const rec=()=>({meta:J.meta,blob:J.shots.Feed.file||null,nowBlob:J.shots.Now.file||null});
+  idbSet(FEEDKEY[t],rec());
+  if(SCSYNC.ref&&SCASSETS)for(const k of which){
+    const [a,,last]=SHOTK[k],blob=J.shots[k].file||null,old=J[last]||prev[a];
     if(blob){try{const r=await SCASSETS.upload(blob,{type:blob.type&&/^image\/(jpeg|png|webp|gif)$/.test(blob.type)?blob.type:'image/jpeg'});
-      if(J.shots.Feed.file===blob&&J.meta){J.meta.assetId=r.id;idbSet(FEEDKEY[t],{meta:J.meta,blob})}else{SCASSETS.delete(r.id).catch(()=>{})}}catch(e){if(t===TG){const f=$('feedSaved');if(f)f.textContent='Saved on this device only (couldn\'t upload to your account).'}}}
-    if(old&&old!==(J.meta&&J.meta.assetId))SCASSETS.delete(old).catch(()=>{});
-    J.lastAsset=J.meta&&J.meta.assetId||null;
+      if(J.shots[k].file===blob&&J.meta){J.meta[a]=r.id;idbSet(FEEDKEY[t],rec())}else{SCASSETS.delete(r.id).catch(()=>{})}}
+      catch(e){if(t===TG&&k==='Feed'){const f=$('feedSaved');if(f)f.textContent='Saved on this device only (couldn\'t upload to your account).'}}}
+    if(old&&old!==(J.meta&&J.meta[a]))SCASSETS.delete(old).catch(()=>{});
+    J[last]=J.meta&&J.meta[a]||null;
   }
   if(SCSYNC.ref)scPush();
   if(t===TG)feedNote();
 }
-function applyFeed(t,meta,blob){
+function applyFeed(t,meta,blob,nowBlob){
   const J=SCT[t];
-  J.meta={...meta,taps:Array.isArray(meta.taps)?meta.taps.filter(x=>typeof x==='number'&&x>=0&&x<=1).slice(0,3):[]};
+  J.meta={...meta,taps:cleanTaps(meta.taps),nowTaps:cleanTaps(meta.nowTaps)};
   if(typeof meta.fedAt==='string')timeInput(t).value=meta.fedAt;
   if(t==='master'){if(meta.ratio&&[...$('scRatio').options].some(o=>o.value===String(meta.ratio)))$('scRatio').value=String(meta.ratio)}
   else{if(meta.ww!=null)$('lvWW').value=String(meta.ww);if(meta.rye!=null)$('lvRye').value=String(meta.rye)}
   J.mode=meta.mode==='two'?'two':'band';
-  const sh=J.shots.Feed;if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);
-  if(blob){sh.url=URL.createObjectURL(blob);sh.file=blob}
-  else if(meta.assetId&&/^[A-Za-z0-9_-]{8,64}$/.test(meta.assetId)){sh.url='/_blob/'+meta.assetId;sh.file=null}
-  else{sh.url=null;sh.file=null}
-  J.lastAsset=J.meta.assetId||null;sh.taps=J.meta.taps.slice();
-  if(t===TG)scSetMode(J.mode);
+  for(const k of ['Feed','Now']){
+    const [a,tp,last]=SHOTK[k],sh=J.shots[k],b=k==='Feed'?blob:nowBlob;
+    if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);
+    if(b){sh.url=URL.createObjectURL(b);sh.file=b}
+    else if(meta[a]&&/^[A-Za-z0-9_-]{8,64}$/.test(meta[a])){sh.url='/_blob/'+meta[a];sh.file=null}
+    else{sh.url=null;sh.file=null}
+    J[last]=J.meta[a]||null;sh.taps=sh.url?J.meta[tp].slice():[];
+  }
+  if(t===TG){$('aiOut').hidden=true;SC.lastAI=null;scSetMode(J.mode)}
   calc();feedNote();
 }
-(async()=>{for(const t of ['master']){const rec=await idbGet(FEEDKEY[t]);if(rec&&rec.meta&&(!SCT[t].meta||rec.meta.savedAt>SCT[t].meta.savedAt))applyFeed(t,rec.meta,rec.blob||null)}})();
+(async()=>{for(const t of ['master']){const rec=await idbGet(FEEDKEY[t]);if(rec&&rec.meta&&(!SCT[t].meta||rec.meta.savedAt>SCT[t].meta.savedAt))applyFeed(t,rec.meta,rec.blob||null,rec.nowBlob||null)}})();
 
 // ---------- My starter: name and flour blend ----------
 const PROF={meta:null};
@@ -984,7 +996,8 @@ async function scPush(){
 function mergeFeed(t,cf,first){
   const lf=SCT[t].meta;
   if(cf&&typeof cf.savedAt==='number'&&(!lf||cf.savedAt>lf.savedAt)){applyFeed(t,cf,null);return false}
-  if(first&&lf&&(!cf||lf.savedAt>(cf.savedAt||0))){saveFeed(t,!!SCT[t].shots.Feed.file&&!lf.assetId,true);return true}
+  if(first&&lf&&(!cf||lf.savedAt>(cf.savedAt||0))){const sh=SCT[t].shots,upF=!!sh.Feed.file&&!lf.assetId,upN=!!sh.Now.file&&!lf.nowAssetId;
+    saveFeed(t,upF&&upN?'both':upF?'Feed':upN?'Now':false,true);return true}
   return false;
 }
 async function scInitSync(){
