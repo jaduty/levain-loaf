@@ -118,6 +118,14 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
 .pltbl td,.pltbl th{padding:8px 12px}
 .pltbl td{font-size:14px}
 .pltbl tr.best td{background:var(--crust-soft);font-weight:600}
+.lookask{padding:10px 12px;border-radius:10px;background:var(--crust-soft);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chips button{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:5px 11px;font:500 13px var(--body);cursor:pointer}
+.chips button:hover{border-color:var(--crust)}
+.logtbl td,.logtbl th{padding:7px 10px}
+.logtbl td{font-size:13px}
+.logtbl select{font:500 13px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 4px}
+.logtbl button.x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px}
 /* Starter check */
 .sc-top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:14px}
 .sc-top .f{display:flex;gap:8px;align-items:center}
@@ -321,6 +329,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
         <div class="f"><label for="scRatio">Usual feeding</label><div class="num"><select id="scRatio"><option value="1">1:1:1</option><option value="2">1:2:2</option><option value="3">1:3:3</option><option value="5">1:5:5</option><option value="10">1:10:10</option></select></div></div>
         <div class="f dt"><label for="fedAt">Last fed</label><div class="num"><input id="fedAt" type="datetime-local"></div></div>
         <div class="cardbtns"><button type="button" class="btn" id="mNew">I just fed it</button></div>
+        <div class="lookask" id="lookAsk" hidden><span id="lookQ">How did your starter look before this feed?</span><div class="chips"><button type="button" data-look="rising">Still rising</button><button type="button" data-look="peak">At peak</button><button type="button" data-look="past">Past peak</button><button type="button" data-look="">Didn't look</button></div></div>
         <p class="status" id="mStat"></p>
       </div>
     </section>
@@ -353,37 +362,27 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     </div>
   </section>
 
-  <section>
-    <h2>Starter check</h2>
+  <section id="scSection" hidden>
+    <h2>Ask Claude</h2>
     <div class="card">
-      <div class="sc-top">
-        <div class="seg" role="group" aria-label="How to measure">
-          <button type="button" id="scBand" aria-pressed="true">Start line in photo</button><button type="button" id="scTwo" aria-pressed="false">Before &amp; after photos</button>
-        </div>
+      <p class="sc-note" style="margin:0 0 12px">For troubleshooting, or waking your starter up after the fridge: take a side photo of the jar (a rubber band at the starting level helps) and Claude will read where it is. Its read goes into the log and sharpens the feeding times.</p>
+      <p class="status" id="scSum" style="margin:0 0 12px"></p>
+      <div class="shot">
+        <h3 id="hNow">Starter now</h3>
+        <div class="pick"><label class="btn" for="fileNow">Take or choose photo</label><input id="fileNow" type="file" accept="image/*" capture="environment"></div>
+        <div class="pic" id="picNow" style="cursor:default">No photo yet</div>
       </div>
-      <p class="status" id="scSum" style="margin:-4px 0 14px"></p>
-      <div class="sc-shots">
-        <div class="shot" id="shotFeed" hidden>
-          <h3 id="hFeed">Right after feeding</h3>
-          <div class="pick"><label class="btn" for="fileFeed">Take or choose photo</label><input id="fileFeed" type="file" accept="image/*" capture="environment"><button type="button" class="btn" id="clrFeed" hidden>Redo taps</button></div>
-          <div class="pic" id="picFeed">No photo yet</div>
-          <div class="prompt" id="promptFeed"></div>
-          <div class="sc-note" id="feedSaved" style="margin:0"></div>
-        </div>
-        <div class="shot">
-          <h3 id="hNow">Starter now</h3>
-          <div class="pick"><label class="btn" for="fileNow">Take or choose photo</label><input id="fileNow" type="file" accept="image/*" capture="environment"><button type="button" class="btn" id="clrNow" hidden>Redo taps</button></div>
-          <div class="pic" id="picNow">No photo yet</div>
-          <div class="prompt" id="promptNow"></div>
-        </div>
-      </div>
-      <div class="sc-out">
-        <div class="verdict" id="scVerdict"><span class="pill">Waiting</span><p>Take a photo of your jar from the side, at eye level. Put a rubber band or a mark at the level when you feed it.</p></div>
-        <div class="sc-actions"><button type="button" class="btn" id="askAI" hidden>Ask Claude about this photo</button><button type="button" class="btn" id="logBtn" disabled>Log this check</button><span class="flash" id="logFlash" role="status"></span></div>
-        <div class="ai" id="aiOut" hidden></div>
-      </div>
-      <details class="sclog" id="scLog"><summary id="logSum">Log</summary><p id="logTxt"></p><p class="sc-note" id="logSync" style="margin:0 0 8px">Saved on this device.</p><div class="tblwrap"><table><thead><tr><th>When</th><th>Feed</th><th>Temp</th><th>Hours</th><th>Rise</th><th>Result</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div></details>
-      <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. The feeding time and both photos are kept, so you can close the app and come back later. Logging a check or tapping "I just fed it" clears both photos.<span id="aiNote"></span></p>
+      <div class="sc-actions" style="margin-top:12px"><button type="button" class="btn" id="askAI">Ask Claude about this photo</button><span class="flash" id="logFlash" role="status"></span></div>
+      <div class="ai" id="aiOut" hidden style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Feeding log</h2>
+    <div class="card">
+      <p id="logTxt" style="margin:0 0 8px;font-size:14px"></p>
+      <p class="sc-note" id="logSync" style="margin:0 0 10px">Saved on this device.</p>
+      <div class="tblwrap"><table class="logtbl"><thead><tr><th>When</th><th>What</th><th>Since last feed</th><th>How it looked</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div>
     </div>
   </section>
 
@@ -684,13 +683,12 @@ function nextMix(){const [hh,mm]=($('mixAt').value||'09:00').split(':').map(Numb
 function lvPeakH(){const rs=Math.max(.1,val('r1')),rf=Math.max(.1,val('r2'));return clamp(baseModel(rf/rs,fermTempC())*lvComp().f*scK().k,1,30)}
 function plStep(d,html){return `<li><time>${fmtTime(d)}<small>${dayWord(d).trim()}</small></time><p>${html}</p></li>`}
 function planTips(){
-  const L=SCLOG.filter(e=>e.jar!=='levain').slice(-6),tips=[];
-  if(!L.length)return tips;
-  const late=L.filter(e=>/Falling|Collapsed|Use it now/.test(e.result||'')).length;
-  const slow=L.filter(e=>e.rise!=null&&e.rise<0.6&&e.el>=baseModel(e.ratio,e.tC)*(e.bf||1)).length;
-  if(late>=2||(late>=1&&L.length<=2))tips.push(['warn','Often caught past peak',`${late} of your last ${L.length} checks found ${esc(mName())} already falling. Check about an hour earlier, or switch to a bigger ratio so the peak lands later.`]);
-  if(slow>=2)tips.push(['warn','Running slow',`${slow} recent checks rose less than 60% by the expected peak. A few days of 1:1:1 feeds twice a day somewhere warm (75–80°F) usually brings a sluggish starter back.`]);
-  const K=scK();if(K.n>=2&&Math.abs(K.k-1)>=0.15)tips.push(['',K.k<1?'A fast starter':'A slow starter',`From your log, ${esc(mName())} peaks about ${Math.round(Math.abs(K.k-1)*100)}% ${K.k<1?'sooner':'later'} than typical. The times below already allow for that.`]);
+  const O=SCLOG.slice(-8).map(obsOf).filter(Boolean),tips=[];
+  if(!O.length)return tips;
+  const late=O.filter(o=>o.kind==='high').length,slow=O.filter(o=>o.kind==='low'&&o.x>1.3).length;
+  if(late>=2)tips.push(['warn','Often past peak at feeding',`${late} of your last ${O.length} readings had ${esc(mName())} already past peak. Feed a bit sooner, or use a bigger ratio so the peak lands closer to your feeding time.`]);
+  if(slow>=2)tips.push(['warn','Running slow',`${esc(mName())} has still been rising well after its expected peak. A few days of 1:1:1 feeds twice a day somewhere warm (75–80°F) usually perks a sluggish starter up.`]);
+  const K=scK();if(K.n>=2&&Math.abs(K.k-1)>=0.15)tips.push(['',K.k<1?'A fast starter':'A slow starter',`From your log, ${esc(mName())} peaks about ${Math.round(Math.abs(K.k-1)*100)}% ${K.k<1?'sooner':'later'} than typical. The times on this page already allow for that.`]);
   return tips;
 }
 function planCard(){
@@ -748,176 +746,163 @@ function planCard(){
   $('plTblWrap').hidden=mode==='fridge';
   $('plTips').innerHTML=planTips().map(([c,t,b])=>`<li class="${c}"><b>${t}</b>${b}</li>`).join('');
   const K=scK();
-  $('plBasis').textContent=`Times use ${mName()} kept at ${Math.round(fromC(tC))}°${unit}${K.n?` and ${K.n} logged peak check${K.n>1?'s':''}`:' and typical timing; log a few peak checks below to personalize them'}.`;
+  $('plBasis').textContent=`Times use ${mName()} kept at ${Math.round(fromC(tC))}°${unit}${K.n?` and ${K.n} reading${K.n>1?'s':''} from the feeding log`:' and typical timing. When you tap "I just fed it", answering how it looked personalizes them'}.`;
 }
 ['Counter','Fridge','Ready'].forEach(k=>$('pl'+k).onclick=()=>{$('planMode').value=k.toLowerCase();if(k==='Ready'&&!$('readyAt').value){const d=new Date(Date.now()+10*36e5);d.setMinutes(0);$('readyAt').value=toLocalInput(d)}calc()});
 
-// ---------- Starter check (either jar) ----------
+// ---------- Feeding log, timing, and Claude photo check ----------
 let TG='master',TG_LOAD=null;
-const mkShots=()=>({Now:{url:null,file:null,taps:[]},Feed:{url:null,file:null,taps:[]}});
-const SCT={master:{mode:'band',shots:mkShots(),meta:null,lastAsset:null},levain:{mode:'band',shots:mkShots(),meta:null,lastAsset:null}};
-const SC={mode:'band',shots:SCT.master.shots};
-const SC_STEPS={band:{Now:['Bottom of the starter','Top of the starter','Start line (rubber band)']},
-  two:{Now:['Bottom of the starter','Top of the starter','Jar rim (same spot in both photos)'],Feed:['Bottom of the starter','Top of the starter','Jar rim (same spot in both photos)']}};
-const SC_COL=['var(--muted)','var(--crust)','var(--rye)'];
-function scSteps(k){return (SC_STEPS[SC.mode][k])||[]}
-function scDraw(k){
-  const sh=SC.shots[k],pic=$('pic'+k);
-  if(!sh.url){pic.textContent='No photo yet';$('prompt'+k).textContent='';$('clr'+k).hidden=true;return}
-  let img=pic.querySelector('img');
-  if(!img){pic.textContent='';img=document.createElement('img');img.alt='Jar photo';pic.append(img)}
-  if(img.getAttribute('src')!==sh.url)img.src=sh.url;
-  pic.querySelectorAll('.mk').forEach(m=>m.remove());
-  const steps=scSteps(k);
-  sh.taps.slice(0,steps.length).forEach((y,i)=>{const m=document.createElement('div');m.className='mk';m.style.top=(y*100)+'%';m.style.setProperty('--c',SC_COL[i]);
-    const t=document.createElement('span');t.textContent=steps[i].split(' (')[0];m.append(t);pic.append(m)});
-  const next=steps[sh.taps.length];
-  const pr=$('prompt'+k);pr.textContent='';
-  if(next){pr.append('Tap the photo: ');const b=document.createElement('b');b.textContent=next.toLowerCase();pr.append(b)}else pr.textContent='All marked.';
-  $('clr'+k).hidden=!sh.taps.length;
+function toLocalInput(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
+function timeInput(){return $('fedAt')}
+let SCLOG=[];try{SCLOG=JSON.parse(localStorage.getItem('sd-starter-log')||'[]')||[]}catch(e){SCLOG=[]}
+const SCSYNC={ref:null,busy:false,again:false,state:'local'};
+function scSaveLog(){SCLOG=SCLOG.slice(-80);try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}if(SCSYNC.ref)scPush()}
+
+// Each reading says where the starter was some hours after a feed. Compared with the typical model for that
+// feed (ratio, temperature, flour), it becomes x = hours / typical peak hours:
+//   at peak -> a point estimate; still rising -> the peak is later (lower bound); past peak -> earlier (upper bound).
+function obsOf(e){
+  if(!e)return null;
+  if(e.kind==='feed'){if(!e.look||!e.prev||!(e.prev.el>0))return null;
+    const x=e.prev.el/(baseModel(e.prev.ratio,e.prev.tC)*(e.prev.bf||1));
+    return e.look==='peak'?{x,kind:'point'}:e.look==='rising'?{x,kind:'low'}:e.look==='past'?{x,kind:'high'}:null}
+  if(e.kind==='ai'){if(!(e.el>0))return null;const x=e.el/(baseModel(e.ratio,e.tC)*(e.bf||1));
+    return e.stage==='peak'?{x,kind:'point'}:e.stage==='near_peak'?{x:x*1.15,kind:'point'}:(e.stage==='rising'||e.stage==='just_fed')?{x,kind:'low'}:(e.stage==='falling'||e.stage==='collapsed')?{x,kind:'high'}:null}
+  if(e.el>0&&e.ratio){const x=e.el/(baseModel(e.ratio,e.tC)*(e.bf||1));if(/Falling|Collapsed/.test(e.result||''))return {x,kind:'high'};if(e.peakObs)return {x,kind:'point'}}
+  return null;
 }
-function scTap(k,e){
-  const sh=SC.shots[k],img=$('pic'+k).querySelector('img');if(!img)return;
-  if(sh.taps.length>=scSteps(k).length)return;
-  const r=img.getBoundingClientRect();
-  // object-fit:contain may letterbox; map the tap into the visible image
-  const nat=img.naturalWidth/img.naturalHeight||1,box=r.width/r.height;
-  let top=r.top,h=r.height;if(box<nat){h=r.width/nat;top=r.top+(r.height-h)/2}
-  const y=(e.clientY-top)/h;if(y<0||y>1)return;
-  sh.taps.push(y);scDraw(k);starterCheck();saveFeed(TG,false);
+function scK(){
+  const O=SCLOG.slice(-30).map(obsOf).filter(Boolean);
+  const P=O.filter(o=>o.kind==='point').map(o=>o.x).sort((a,b)=>a-b);
+  let k=P.length?(P.length%2?P[(P.length-1)/2]:(P[P.length/2-1]+P[P.length/2])/2):1;
+  const L=O.filter(o=>o.kind==='low').slice(-5).map(o=>o.x),U=O.filter(o=>o.kind==='high').slice(-5).map(o=>o.x);
+  const lo=L.length?Math.max(...L):0,hi=U.length?Math.min(...U):Infinity;
+  if(lo<hi){if(k<lo)k=lo*1.1;if(k>hi)k=hi*0.9}
+  return {k:clamp(k,0.4,2.5),n:O.length};
+}
+
+// ----- feeding time + ratio (synced) -----
+const FEED={meta:null};
+try{FEED.meta=JSON.parse(localStorage.getItem('sd-feed-meta')||'null')}catch(e){}
+function saveFeed(){FEED.meta={savedAt:Date.now(),fedAt:$('fedAt').value||'',ratio:$('scRatio').value};
+  try{localStorage.setItem('sd-feed-meta',JSON.stringify(FEED.meta))}catch(e){}if(SCSYNC.ref)scPush()}
+function applyFeed(m){FEED.meta={savedAt:m.savedAt,fedAt:typeof m.fedAt==='string'?m.fedAt:'',ratio:String(m.ratio||$('scRatio').value)};
+  if(typeof m.fedAt==='string')$('fedAt').value=m.fedAt;
+  if(m.ratio&&[...$('scRatio').options].some(o=>o.value===String(m.ratio)))$('scRatio').value=String(m.ratio);
+  try{localStorage.setItem('sd-feed-meta',JSON.stringify(FEED.meta))}catch(e){}calc()}
+function feedNote(){}
+$('fedAt').addEventListener('change',saveFeed);$('scRatio').addEventListener('change',saveFeed);
+
+// ----- "I just fed it" logs the feed, then asks one optional question about the previous one -----
+function feedNow(){
+  const now=Date.now(),prevFv=$('fedAt').value,prevT=prevFv?new Date(prevFv).getTime():NaN;
+  const r=+$('scRatio').value||1,tC=starterTempC(),bf=masterBlend().f;
+  const last=SCLOG.filter(e=>e.kind==='feed').slice(-1)[0],lastMatches=last&&!isNaN(prevT)&&Math.abs(last.t-prevT)<3*6e4;
+  const gap=(now-prevT)/36e5;
+  const prev=!isNaN(prevT)&&gap>0.25&&gap<96?{el:gap,ratio:lastMatches?last.ratio:r,tC:lastMatches?last.tC:tC,bf:lastMatches?last.bf:bf}:null;
+  const e={t:now,kind:'feed',ratio:r,tC,bf,look:null,prev};
+  SCLOG.push(e);scSaveLog();
+  $('fedAt').value=toLocalInput(new Date(now));saveFeed();
+  const box=$('lookAsk');
+  if(prev){box.dataset.t=String(now);$('lookQ').textContent=`How did ${mName()} look before this feed (${hrs(gap)} after the last one)?`;box.hidden=false}
+  else box.hidden=true;
+  scRenderLog();calc();
+}
+$('mNew').onclick=feedNow;
+$('lookAsk').addEventListener('click',ev=>{
+  const b=ev.target.closest('button[data-look]');if(!b)return;
+  const t=+$('lookAsk').dataset.t,e=SCLOG.find(x=>x.t===t);
+  if(e){e.look=b.dataset.look||null;scSaveLog()}
+  $('lookAsk').hidden=true;scRenderLog();calc();
+});
+
+// ----- log table -----
+const LOOK={rising:'Still rising',peak:'At peak',past:'Past peak'};
+const STG={just_fed:'Just fed',rising:'Rising',near_peak:'Near peak',peak:'Peak',falling:'Falling',collapsed:'Collapsed'};
+function scRenderLog(){
+  const K=scK(),txt=$('logTxt');
+  if(!K.n)txt.textContent=`Tap "I just fed it" each time you feed. When it asks how ${mName()} looked, one tap teaches the app its real timing.`;
+  else{const pct=Math.round(Math.abs(K.k-1)*100);txt.textContent=`From ${K.n} reading${K.n>1?'s':''}, ${mName()} peaks ${pct<5?'right about on the typical schedule':`about ${pct}% ${K.k<1?'sooner':'later'} than typical`}, after allowing for ratio, temperature and flour. Feeding times on this page use this.`}
+  const body=$('logBody');body.innerHTML='';
+  SCLOG.slice().reverse().slice(0,20).forEach(e=>{
+    const tr=document.createElement('tr'),d=new Date(e.t);
+    const td=x=>{const c=document.createElement('td');if(x instanceof Node)c.append(x);else c.textContent=x;tr.append(c);return c};
+    td(d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
+    if(e.kind==='feed'){
+      td(`Fed 1:${e.ratio}:${e.ratio}`);td(e.prev?hrs(e.prev.el):'—');
+      if(e.prev){const sel=document.createElement('select');sel.setAttribute('aria-label','How it looked before this feed');
+        [['','—'],['rising','Still rising'],['peak','At peak'],['past','Past peak']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;sel.append(o)});
+        sel.value=e.look||'';sel.onchange=()=>{e.look=sel.value||null;scSaveLog();scRenderLog();calc()};td(sel)}else td('—');
+    }else if(e.kind==='ai'){td('Claude check');td(hrs(e.el));td(STG[e.stage]||e.stage||'—')}
+    else{td('Photo check');td(e.el?hrs(e.el):'—');td(e.result||'—')}
+    const b=document.createElement('button');b.className='x';b.type='button';b.textContent='×';b.setAttribute('aria-label','Remove this entry');
+    b.onclick=()=>{SCLOG=SCLOG.filter(x=>x!==e);scSaveLog();scRenderLog();calc()};td(b);
+    body.append(tr)});
+  if(!SCLOG.length){const tr=document.createElement('tr');const c=document.createElement('td');c.colSpan=5;c.style.color='var(--muted)';c.textContent='No feeds logged yet.';tr.append(c);body.append(tr)}
+}
+
+// ----- Claude photo check (Claude-hosted app only) -----
+const SC={now:{url:null,file:null},lastAI:null};
+function scContext(){
+  const ratio=+$('scRatio').value||1,tC=starterTempC(),K=scK(),bf=masterBlend().f;
+  return {ratio,label:`1:${ratio}:${ratio}`,tC,bf,K,peak:clamp(baseModel(ratio,tC)*bf*K.k,1,30),el:sinceH($('fedAt').value)};
+}
+function starterCheck(){
+  const s=$('scSum');if(!s)return;const c=scContext();s.textContent='';
+  if(c.el==null){s.textContent=`Set when you last fed ${mName()} (or tap "I just fed it") so Claude knows the timing.`;return}
+  s.append(`${mName(true)}, fed at ${c.label}, ${hrs(c.el)} ago. `);const b=document.createElement('b');const at=clockAt($('fedAt').value,c.peak);
+  b.textContent=c.el<c.peak?`Expected peak around ${fmtClock(at)}`:`Expected peak was around ${fmtClock(at)}`;s.append(b,'.');
 }
 async function scShrink(file){
   try{const bm=await createImageBitmap(file,{imageOrientation:'from-image'});const sc=Math.min(1,1600/Math.max(bm.width,bm.height));
     const c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
     const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85));return b||file}catch(e){return file}
 }
-function timeInput(t){return t==='levain'?$('lvAt'):$('fedAt')}
-async function scPick(k,file){
-  const t=TG,sh=SCT[t].shots[k];if(!file)return;
-  const lm=file.lastModified;const img=await scShrink(file);
-  if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);
-  sh.url=URL.createObjectURL(img);sh.file=img;sh.taps=[];
-  if(k==='Feed'&&lm&&!timeInput(t).value){timeInput(t).value=toLocalInput(new Date(lm));calc()}
-  if(t===TG){$('aiOut').hidden=true;SC.lastAI=null;scDraw(k);starterCheck()}
-  saveFeed(t,k);
+async function scPick(file){
+  if(!file)return;const img=await scShrink(file);
+  if(SC.now.url)URL.revokeObjectURL(SC.now.url);SC.now={url:URL.createObjectURL(img),file:img};
+  const pic=$('picNow');pic.textContent='';const el=document.createElement('img');el.alt='Starter photo';el.src=SC.now.url;pic.append(el);
+  $('aiOut').hidden=true;SC.lastAI=null;
 }
-function toLocalInput(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
-function scSetMode(m){const changed=SCT[TG].mode!==m;SC.mode=m;SCT[TG].mode=m;$('scBand').setAttribute('aria-pressed',m==='band');$('scTwo').setAttribute('aria-pressed',m==='two');
-  $('shotFeed').hidden=m!=='two';
-  // The before photo's lines are kept even while unused. The now photo's third line means start line in one mode
-  // and jar rim in the other, so only that one is cleared when the mode changes.
-  const n=SC.shots.Now;if(changed&&n.taps.length>2)n.taps=n.taps.slice(0,2);
-  ['Now','Feed'].forEach(k=>scDraw(k));starterCheck();save()}
-function scTarget(t){
-  TG=t==='levain'?'levain':'master';SC.shots=SCT[TG].shots;
-  $('hFeed').textContent=TG==='levain'?'Right after building':'Right after feeding';
-  $('hNow').textContent=TG==='levain'?'Levain now':`${mName(true)} now`;
-  $('aiOut').hidden=true;SC.lastAI=null;scSetMode(SCT[TG].mode);feedNote();
-}
-function scMeasure(){
-  const n=SC.shots.Now.taps,f=SC.shots.Feed.taps;
-  if(SC.mode==='band'){if(n.length<3)return null;const h=n[0]-n[1],h0=n[0]-n[2];if(h0<=0.01||h<=0)return null;return h/h0-1}
-  if(n.length<3||f.length<3)return null;
-  const fn=(n[0]-n[1])/(n[0]-n[2]),ff=(f[0]-f[1])/(f[0]-f[2]);
-  if(!(fn>0)||!(ff>0)||!isFinite(fn)||!isFinite(ff))return null;return fn/ff-1;
-}
-let SCLOG=[];try{SCLOG=JSON.parse(localStorage.getItem('sd-starter-log')||'[]')||[]}catch(e){SCLOG=[]}
-// Learned speed: how this culture compares with the typical model, after allowing for ratio, temperature and flour
-function scK(){const o=SCLOG.filter(e=>e.peakObs&&e.el>0).map(e=>e.el/(baseModel(e.ratio,e.tC)*(e.bf||1))).sort((a,b)=>a-b);
-  if(!o.length)return {k:1,n:0};const m=o.length%2?o[(o.length-1)/2]:(o[o.length/2-1]+o[o.length/2])/2;return {k:clamp(m,0.4,2.5),n:o.length}}
-function scSaveLog(){SCLOG=SCLOG.slice(-60);try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}if(SCSYNC.ref)scPush()}
-const SCSYNC={ref:null,busy:false,again:false,state:'local'};
-function scContext(){
-  const rt=v=>r1(v).replace(/\.0$/,'');
-  const tC=starterTempC(),useBox=false;const K=scK();
-  let ratio,label,bf,fv,jar;
-  if(TG==='levain'){const rs=Math.max(.1,val('r1')),rf=Math.max(.1,val('r2')),rw=Math.max(0,val('r3'));ratio=rf/rs;label=`${rt(rs)}:${rt(rf)}:${rt(rw)}`;bf=lvComp().f;fv=$('lvAt').value;jar='levain'}
-  else{ratio=+$('scRatio').value||1;label=`1:${ratio}:${ratio}`;bf=masterBlend().f;fv=$('fedAt').value;jar='master'}
-  const peak=clamp(baseModel(ratio,tC)*bf*K.k,1,30);
-  return {ratio,label,bf,tC,useBox,peak,K,jar,el:sinceH(fv)};
-}
-function scSummary(c){
-  const s=$('scSum');s.textContent='';
-  const who=c.jar==='levain'?`Levain, built from ${mName()} at ${c.label}`:`${mName(true)}, fed at ${c.label}`;
-  const fv=timeInput(c.jar).value;
-  if(c.el==null){s.textContent=`${who}. Set the ${c.jar==='levain'?'"Built"':'"Last fed"'} time in the ${c.jar==='levain'?'Levain':'My starter'} card (or tap ${c.jar==='levain'?'"I just built it"':'"I just fed it"'}).`;return}
-  s.append(`${who}, ${hrs(c.el)} ago. `);const b=document.createElement('b');const at=clockAt(fv,c.peak);
-  b.textContent=c.el<c.peak?`Expected peak around ${fmtClock(at)}`:`Expected peak was around ${fmtClock(at)}`;s.append(b,'.');
-}
-function starterCheck(){
-  const v=$('scVerdict');if(!v)return;
-  const R=scMeasure(),c=scContext();scSummary(c);
-  const jarTxt=c.jar==='levain'?'the levain':mName();
-  const nextStep=c.jar==='levain'?'mix your dough':'feed it again, build a levain, or put it in the fridge';
-  const tTxt=`${Math.round(fromC(c.tC))}°${unit}${c.useBox?' in the proofing box':''}`;
-  const exp=c.K.n?`At ${c.label} and ${tTxt}, ${jarTxt} should peak about ${hrs(c.peak)} after ${c.jar==='levain'?'building':'feeding'} (adjusted from ${c.K.n} logged check${c.K.n>1?'s':''}).`:`At ${c.label} and ${tTxt}, ${jarTxt} usually peaks about ${hrs(c.peak)} after ${c.jar==='levain'?'building':'feeding'}.`;
-  let pill='',cls='',big='',msg='';SC.last={rise:R,pill:''};
-  if(R==null){
-    if(!SC.shots.Now.url){$('logBtn').disabled=true;v.innerHTML='';const p=document.createElement('span');p.className='pill';p.textContent='Waiting';const t=document.createElement('p');
-      t.textContent=exp+' Take a side photo of the jar to measure the rise.';v.append(p,t);return}
-    pill='Mark the photo';msg=exp;
-  }else{
-    const pct=Math.round(R*100),late=c.el!=null&&c.el>c.peak*1.4,early=c.el!=null&&c.el<c.peak*0.7;
-    big=`${pct>=0?'+':''}${pct}%`;
-    if(R<0.4){pill='Still rising';msg=c.el!=null&&c.el>c.peak*1.3?`Only ${pct}% after ${hrs(c.el)}. It's running slow: move it somewhere warmer${c.jar==='master'?', or check it\'s had regular feeds':''}.`:`Not ready yet. ${c.el!=null?`Check again in about ${hrs(Math.max(0.5,c.peak-c.el))}.`:exp}`}
-    else if(R<0.85){pill='Getting close';cls='ok';msg=late?`${pct}% after ${hrs(c.el)}, past when it usually peaks. If the top is flat or there's a streak above it on the glass, it has already peaked. Use it now${c.jar==='master'?' or feed it':''}.`:`Nearly there. Look for a domed top and lots of bubbles. ${c.el!=null&&c.el<c.peak?`Expected peak in about ${hrs(c.peak-c.el)}.`:''}`}
-    else{pill=late?'Use it now':'Ready';cls=late?'warn':'go';msg=late?`Doubled, and it's ${hrs(c.el)} since ${c.jar==='levain'?'building':'feeding'}, so it may be starting to fall. Use it now; if it's runny or smells sharp, ${c.jar==='levain'?'expect a tangier, slower dough':'feed it first'}.`:`Close to doubled${c.el!=null?` after ${hrs(c.el)}`:''}. This is the window to ${nextStep}.${early?' It rose faster than usual, so use it soon.':''}`}
-  }
-  SC.last.pill=pill;$('logBtn').disabled=!(c.el!=null&&(R!=null||SC.lastAI));
-  v.innerHTML='';const p=document.createElement('span');p.className='pill'+(cls?' '+cls:'');p.textContent=pill;v.append(p);
-  if(big){const b=document.createElement('span');b.className='big';b.textContent=big;const l=document.createElement('span');l.style.cssText='font-size:13px;color:var(--muted)';l.textContent='rise'+(c.el!=null?` · ${hrs(c.el)} since ${c.jar==='levain'?'building':'feeding'}`:'');v.append(b,l)}
-  const t=document.createElement('p');t.textContent=msg;v.append(t);
-}
-// Ask Claude (only in the Claude-hosted app)
+$('fileNow').addEventListener('change',e=>{scPick(e.target.files&&e.target.files[0]);e.target.value=''});
 let scSample=null,scCtl=null;
 async function scInitAI(){
   try{
     if(!window.claude||typeof window.claude.use!=='function')return;
     const s=await window.claude.use('sample');if(!s)return;
     const lim=await s.limits().catch(()=>null);if(!lim||!lim.images)return;
-    scSample=s;$('askAI').hidden=false;$('aiNote').textContent=' "Ask Claude" sends the photos to Claude for a second opinion and uses your Claude account.';
+    scSample=s;$('scSection').hidden=false;
   }catch(e){}
 }
 async function scAsk(){
-  if(!scSample)return;
-  let now=SC.shots.Now.file;const out=$('aiOut');
-  if(!now&&SC.shots.Now.url){try{now=await (await fetch(SC.shots.Now.url)).blob()}catch(e){now=null}}
-  if(!now){out.hidden=false;out.textContent=SC.shots.Feed.url?`Your before photo is saved. Claude judges readiness from the "${$('hNow').textContent}" photo, so take that one later, when you want to know if it's ready, then ask again.`:`Take the "${$('hNow').textContent}" photo first.`;return}
-  const imgs=[now];let fb=SC.shots.Feed.file;
-  if(SC.mode==='two'&&!fb&&SC.shots.Feed.url){try{fb=await (await fetch(SC.shots.Feed.url)).blob()}catch(e){fb=null}}
-  const two=SC.mode==='two'&&fb;if(two)imgs.push(fb);
-  const c=scContext(),R=scMeasure();
-  const nm=$('stName').value.trim().slice(0,40).replace(/["\\]/g,'');
-  const comp=c.jar==='levain'?lvComp():masterBlend();
+  if(!scSample)return;const out=$('aiOut');
+  const now=SC.now.file;
+  if(!now){out.hidden=false;out.textContent=`Take a side photo of ${mName()} first.`;return}
+  const c=scContext(),nm=$('stName').value.trim().slice(0,40).replace(/["\\]/g,''),comp=masterBlend();
   const flourTxt=`${Math.round(comp.ww*100)}% whole wheat, ${Math.round(comp.rye*100)}% rye and the rest white flour`;
-  const who=c.jar==='levain'
-    ?`This jar is a LEVAIN built for a bake from the baker's master starter${nm?` "${nm}"`:''} at ${c.label} (starter : new flour : new water by weight). Its flour is about ${flourTxt}. `
-    :`This jar is the baker's master starter${nm?`, named "${nm}"`:''}, fed at ${c.label} (starter : flour : water by weight) with ${flourTxt}. `;
-  const notes='Whole wheat and especially rye make a culture rise faster, look darker and more speckled, and have a denser, pastier texture with smaller bubbles than an all-white one; judge it against that. ';
-  const hist=who+notes+(c.K.n?`The baker's log of ${c.K.n} earlier check${c.K.n>1?'s':''} shows this culture runs about ${Math.round(Math.abs(c.K.k-1)*100)}% ${c.K.k<1?'faster':'slower'} than typical, so at this ratio, temperature and flour it should peak around ${c.peak.toFixed(1)} hours after ${c.jar==='levain'?'building':'feeding'}. `:`At this ratio, temperature and flour it typically peaks around ${c.peak.toFixed(1)} hours after ${c.jar==='levain'?'building':'feeding'}. `);
-  const prompt=`You are an experienced sourdough baker looking at photos of a home baker's ${c.jar==='levain'?'levain':'starter'} to judge where it is in its rise-and-fall cycle and whether it's ready to use. `+
-    `Image 1 is the jar now.${two?` Image 2 is the same jar right after ${c.jar==='levain'?'it was built':'feeding'}: compare the two, including bubble activity.`:''}\n`+
-    `Context: ${c.el!=null?`about ${c.el.toFixed(1)} hours since ${c.jar==='levain'?'it was built':'feeding'}`:'time since feeding unknown'}, kept at about ${Math.round(fromC(c.tC))}°${unit}. `+hist+
-    `${R!=null?`The baker tapped the levels on the photo${two?'s':''}, which measures a rise of about ${Math.round(R*100)}% (approximate; trust what you see if it clearly disagrees).`:'No tapped measurement; judge the rise by eye, using a rubber band or mark if one is visible.'}\n`+
+  const hist=`This jar is the baker's starter${nm?`, named "${nm}"`:''}, fed at ${c.label} (starter : flour : water by weight) with ${flourTxt}. `+
+    'Whole wheat and especially rye make a culture rise faster, look darker and more speckled, and have a denser, pastier texture with smaller bubbles than an all-white one; judge it against that. '+
+    (c.K.n?`The baker's log of ${c.K.n} earlier reading${c.K.n>1?'s':''} shows this starter runs about ${Math.round(Math.abs(c.K.k-1)*100)}% ${c.K.k<1?'faster':'slower'} than typical, so at this ratio, temperature and flour it should peak around ${c.peak.toFixed(1)} hours after feeding. `:`At this ratio, temperature and flour it typically peaks around ${c.peak.toFixed(1)} hours after feeding. `);
+  const prompt=`You are an experienced sourdough baker looking at a photo of a home baker's starter to judge where it is in its rise-and-fall cycle, whether it's healthy, and what to do next. The baker may be troubleshooting or reviving it after time in the fridge.\n`+
+    `Context: ${c.el!=null?`about ${c.el.toFixed(1)} hours since feeding`:'time since feeding unknown'}, kept at about ${Math.round(fromC(c.tC))}°${unit}. `+hist+'\n'+
     `Assess each sign from the photo: `+
-    `rise (how far above the start mark, roughly what % if a mark is visible); `+
+    `rise (how far above the start mark, roughly what % if a rubber band or mark is visible); `+
     `bubbles (size: fine, medium, large; whether they run through the whole jar or only near the top; whether they look active or collapsing); `+
     `surface (domed, flat, sunken, wrinkled, popping bubbles); `+
     `residue (a film or streak on the glass above the current level means it peaked and fell); `+
     `texture (airy and web-like vs dense vs runny; any grey liquid or dark streaks on top). `+
     `Then combine the signs with the timing into one stage. Say "can't tell" for any sign the photo doesn't show; don't guess. `+
-    `"use_now" means ${c.jar==='levain'?'mix the dough now':'build the levain (or use it) now'}${c.jar==='master'?'; "feed_first" means it needs a refresh before use':''}.\n`+
+    `"use_now" means it's ready to build a levain or bake with now; "feed_first" means it needs a refresh before use.\n`+
     `Reply with only this JSON: {"stage": "just_fed" | "rising" | "near_peak" | "peak" | "falling" | "collapsed" | "unclear", `+
     `"action": "wait" | "use_now" | "use_soon" | "feed_first", "confidence": "low" | "medium" | "high", `+
     `"check_again_hours": number or null, "headline": "one short sentence", `+
     `"signs": [{"sign": "Rise" | "Bubbles" | "Surface" | "Residue" | "Texture", "rating": "2-3 words", "tone": "good" | "neutral" | "warn", "note": "one short sentence"}], `+
-    `${two?'"compare": "one or two sentences on what changed between the photos", ':''}"advice": "one or two sentences on what to do now"}`;
-  const btn=$('askAI');btn.disabled=true;out.hidden=false;out.textContent=c.jar==='levain'?'Looking at your levain…':`Looking at ${mName()}…`;
-  const askedFor=TG;scCtl=new AbortController();
+    `"advice": "one or two sentences on what to do now, including feeding if it needs it"}`;
+  const btn=$('askAI');btn.disabled=true;out.hidden=false;out.textContent=`Looking at ${mName()}…`;
+  scCtl=new AbortController();
   try{
-    const r=await scSample.json(prompt,{images:imgs,signal:scCtl.signal})||{};
-    if(askedFor!==TG)return;
-    const ACT={wait:['Wait',''],use_now:[c.jar==='levain'?'Mix now':'Use it now',' go'],use_soon:['Use it soon',' ok'],feed_first:['Feed it first',' warn']}[r.action]||['Claude says',''];
+    const r=await scSample.json(prompt,{images:[now],signal:scCtl.signal})||{};
+    const ACT={wait:['Wait',''],use_now:['Use it now',' go'],use_soon:['Use it soon',' ok'],feed_first:['Feed it first',' warn']}[r.action]||['Claude says',''];
     const POS={just_fed:5,rising:30,near_peak:58,peak:74,falling:88,collapsed:97}[r.stage];
     SC.lastAI=r.stage&&r.stage!=='unclear'?String(r.stage):null;
     out.innerHTML='';
@@ -933,13 +918,14 @@ async function scAsk(){
       r.signs.slice(0,6).forEach(x=>{if(!x)return;const dt=document.createElement('dt');dt.textContent=String(x.sign||'');
         const t=document.createElement('dd');t.className='tone'+(x.tone==='good'?' good':x.tone==='warn'?' warn':'');t.textContent=String(x.rating||'');
         const nt=document.createElement('dd');nt.className='note';nt.textContent=String(x.note||'');dl.append(dt,t,nt)});out.append(dl)}
-    if(r.compare){const cp=document.createElement('p');cp.textContent='Before vs. now: '+String(r.compare);out.append(cp)}
     if(r.advice){const a=document.createElement('p');a.style.marginTop='8px';a.textContent=String(r.advice);out.append(a)}
     const ca=Number(r.check_again_hours);if(r.action==='wait'&&ca>0&&ca<24){const q=document.createElement('p');q.style.cssText='margin-top:6px;color:var(--muted);font-size:13px';q.textContent=`Check again in about ${hrs(ca)}.`;out.append(q)}
-    starterCheck();
+    // Claude's read becomes a timing reading in the log
+    if(SC.lastAI&&c.el!=null){SCLOG.push({t:Date.now(),kind:'ai',stage:SC.lastAI,el:c.el,ratio:c.ratio,tC:c.tC,bf:c.bf});scSaveLog();scRenderLog();calc();
+      const n=document.createElement('p');n.style.cssText='margin-top:6px;color:var(--rye);font-size:13px';n.textContent=`Added to ${mName()}'s log; the feeding times now take it into account.`;out.append(n)}
   }catch(e){
     const code=e&&e.code;
-    if(code==='not_granted'||code==='sampling_disabled'||code==='images_unavailable'||code==='capability_disabled'||code==='not_declared'){btn.hidden=true;out.textContent='Claude isn\'t available for photos here. The rise measurement above still works.'}
+    if(code==='not_granted'||code==='sampling_disabled'||code==='images_unavailable'||code==='capability_disabled'||code==='not_declared'){btn.hidden=true;out.textContent='Claude isn\'t available for photos here.'}
     else if(code==='cancelled'){out.hidden=true}
     else if(code==='rate_limited'){out.textContent='Claude is busy or you\'ve hit a usage limit. Try again in a little while.'}
     else if(code==='image_rejected'){out.textContent='That photo couldn\'t be read. Try a JPEG or PNG under 20 MB.'}
@@ -947,98 +933,8 @@ async function scAsk(){
     else{out.textContent='Something went wrong reaching Claude. Try again in a moment.'}
   }finally{btn.disabled=false}
 }
-['Now','Feed'].forEach(k=>{
-  $('file'+k).addEventListener('change',e=>{scPick(k,e.target.files&&e.target.files[0]);e.target.value=''});
-  $('pic'+k).addEventListener('click',e=>scTap(k,e));
-  $('clr'+k).addEventListener('click',()=>{SC.shots[k].taps=[];scDraw(k);starterCheck();saveFeed(TG,false)});
-});
-$('scBand').onclick=()=>{scSetMode('band');saveFeed(TG,false)};$('scTwo').onclick=()=>{scSetMode('two');saveFeed(TG,false)};
-$('fedAt').addEventListener('change',()=>saveFeed('master',false));$('scRatio').addEventListener('change',()=>saveFeed('master',false));
-function newRound(t){
-  ['Now','Feed'].forEach(k=>{const sh=SCT[t].shots[k];if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);sh.url=null;sh.file=null;sh.taps=[];if(t===TG)scDraw(k)});
-  timeInput(t).value=toLocalInput(new Date());if(t===TG){$('aiOut').hidden=true;SC.lastAI=null}
-  calc();saveFeed(t,'both');feedNote();
-  const f=$('logFlash');if(f){f.textContent=t==='levain'?'Levain build time set to now.':'Feeding time set to now.';setTimeout(()=>{f.textContent=''},4000)}
-}
-$('mNew').onclick=()=>newRound('master');
 $('askAI').onclick=scAsk;
-function scRenderLog(){
-  const n=SCLOG.length;$('logSum').textContent=`Log (${n})`;$('scLog').hidden=!n;
-  const K=scK(),txt=$('logTxt');
-  if(!K.n)txt.textContent=`Log a check when ${mName()} or your levain is at or near peak, and the app will learn how fast your culture rises.`;
-  else{const pct=Math.round(Math.abs(K.k-1)*100);txt.textContent=`From ${K.n} peak check${K.n>1?'s':''}, ${mName()} runs ${pct<5?'right about on the typical schedule':`about ${pct}% ${K.k<1?'faster':'slower'} than typical`}, after allowing for ratio, temperature and flour. Peak times for both jars use this.`}
-  const body=$('logBody');body.innerHTML='';
-  SCLOG.slice().reverse().slice(0,12).forEach(e=>{const tr=document.createElement('tr');
-    const d=new Date(e.t);const cells=[d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}),
-      e.label||`1:${e.ratio}:${e.ratio}`,`${Math.round(fromC(e.tC))}°${unit}`,hrs(e.el),e.rise!=null?`${Math.round(e.rise*100)}%`:'—',e.result||''];
-    cells.forEach(x=>{const td=document.createElement('td');td.textContent=x;tr.append(td)});
-    const td=document.createElement('td');const b=document.createElement('button');b.className='x';b.type='button';b.textContent='×';b.setAttribute('aria-label','Remove this entry');
-    b.onclick=()=>{SCLOG=SCLOG.filter(x=>x!==e);scSaveLog();scRenderLog();calc()};td.append(b);tr.append(td);body.append(tr)});
-}
-function scLog(){
-  const c=scContext(),R=scMeasure();if(c.el==null)return;
-  const ai=SC.lastAI;const peakObs=(R!=null&&R>=0.85&&R<=1.6)||ai==='peak';
-  const STG={just_fed:'Just fed',rising:'Rising',near_peak:'Near peak',peak:'Peak',falling:'Falling',collapsed:'Collapsed'};
-  SCLOG.push({t:Date.now(),jar:c.jar,ratio:c.ratio,label:c.label,bf:c.bf,tC:c.tC,el:c.el,rise:R,result:ai?('Claude: '+(STG[ai]||ai)):(SC.last&&SC.last.pill)||'',peakObs});
-  scSaveLog();scRenderLog();
-  ['Now','Feed'].forEach(k=>{const sh=SC.shots[k];if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);sh.url=null;sh.file=null;sh.taps=[];scDraw(k)});
-  $('aiOut').hidden=true;SC.lastAI=null;saveFeed(TG,'both');calc();
-  const f=$('logFlash');f.textContent=(SCSYNC.state==='cloud'?'Logged to your Claude account.':'Logged.')+(peakObs?' This one counts toward the learned peak time.':'')+' Photos cleared for your next check.';setTimeout(()=>{f.textContent=''},4000);
-}
-$('logBtn').onclick=scLog;
 scRenderLog();
-// ---------- Keep each jar's round (time, mode, before photo) ----------
-let SCASSETS=null;
-const FEEDKEY={master:'feed',levain:'feed-levain'};
-function idbOpen(){return new Promise((res,rej)=>{try{const r=indexedDB.open('levain-loaf',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
-async function idbSet(k,v){try{const d=await idbOpen();await new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){}}
-async function idbGet(k){try{const d=await idbOpen();return await new Promise((res,rej)=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}catch(e){return null}}
-function feedNote(){const el=$('feedSaved');if(!el)return;const J=SCT[TG],sh=J.shots.Feed;
-  if(!sh.url){el.textContent='';return}
-  el.textContent=SCSYNC.ref&&J.meta&&J.meta.assetId?'Saved to your Claude account.':'Saved on this device.'}
-// The before ("Feed") and after ("Now") photos travel together as a pair.
-const SHOTK={Feed:['assetId','taps','lastAsset'],Now:['nowAssetId','nowTaps','lastNowAsset']};
-const cleanTaps=v=>Array.isArray(v)?v.filter(x=>typeof x==='number'&&x>=0&&x<=1).slice(0,3):[];
-async function saveFeed(t,changed,quiet){
-  if(changed===true)changed='Feed';
-  const J=SCT[t],prev=J.meta||{},which=changed==='both'?['Feed','Now']:changed?[changed]:[];
-  const meta={savedAt:quiet&&prev.savedAt?prev.savedAt:Date.now(),mode:J.mode};
-  for(const k of ['Feed','Now']){const [a,tp,last]=SHOTK[k];meta[tp]=J.shots[k].taps.slice(0,3);meta[a]=which.includes(k)?null:(prev[a]||J[last]||null)}
-  if(t==='master'){meta.fedAt=$('fedAt').value||'';meta.ratio=$('scRatio').value}
-  else{meta.fedAt=$('lvAt').value||'';meta.ww=$('lvWW').value;meta.rye=$('lvRye').value}
-  J.meta=meta;
-  const rec=()=>({meta:J.meta,blob:J.shots.Feed.file||null,nowBlob:J.shots.Now.file||null});
-  idbSet(FEEDKEY[t],rec());
-  if(SCSYNC.ref&&SCASSETS)for(const k of which){
-    const [a,,last]=SHOTK[k],blob=J.shots[k].file||null,old=J[last]||prev[a];
-    if(blob){try{const r=await SCASSETS.upload(blob,{type:blob.type&&/^image\/(jpeg|png|webp|gif)$/.test(blob.type)?blob.type:'image/jpeg'});
-      if(J.shots[k].file===blob&&J.meta){J.meta[a]=r.id;idbSet(FEEDKEY[t],rec())}else{SCASSETS.delete(r.id).catch(()=>{})}}
-      catch(e){if(t===TG&&k==='Feed'){const f=$('feedSaved');if(f)f.textContent='Saved on this device only (couldn\'t upload to your account).'}}}
-    if(old&&old!==(J.meta&&J.meta[a]))SCASSETS.delete(old).catch(()=>{});
-    J[last]=J.meta&&J.meta[a]||null;
-  }
-  if(SCSYNC.ref)scPush();
-  if(t===TG)feedNote();
-}
-function applyFeed(t,meta,blob,nowBlob){
-  const J=SCT[t];
-  J.meta={...meta,taps:cleanTaps(meta.taps),nowTaps:cleanTaps(meta.nowTaps)};
-  if(typeof meta.fedAt==='string')timeInput(t).value=meta.fedAt;
-  if(t==='master'){if(meta.ratio&&[...$('scRatio').options].some(o=>o.value===String(meta.ratio)))$('scRatio').value=String(meta.ratio)}
-  else{if(meta.ww!=null)$('lvWW').value=String(meta.ww);if(meta.rye!=null)$('lvRye').value=String(meta.rye)}
-  J.mode=meta.mode==='two'?'two':'band';
-  for(const k of ['Feed','Now']){
-    const [a,tp,last]=SHOTK[k],sh=J.shots[k],b=k==='Feed'?blob:nowBlob;
-    if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);
-    if(b){sh.url=URL.createObjectURL(b);sh.file=b}
-    else if(meta[a]&&/^[A-Za-z0-9_-]{8,64}$/.test(meta[a])){sh.url='/_blob/'+meta[a];sh.file=null}
-    else{sh.url=null;sh.file=null}
-    J[last]=J.meta[a]||null;sh.taps=sh.url?J.meta[tp].slice():[];
-  }
-  if(t===TG){$('aiOut').hidden=true;SC.lastAI=null;scSetMode(J.mode)}
-  calc();feedNote();
-}
-(async()=>{for(const t of ['master']){const rec=await idbGet(FEEDKEY[t]);if(rec&&rec.meta&&(!SCT[t].meta||rec.meta.savedAt>SCT[t].meta.savedAt))applyFeed(t,rec.meta,rec.blob||null,rec.nowBlob||null)}})();
 
 // ---------- My starter: name and flour blend ----------
 const PROF={meta:null};
@@ -1087,23 +983,22 @@ function scSyncNote(){const el=$('logSync');if(!el)return;
 async function scPush(){
   if(!SCSYNC.ref)return;if(SCSYNC.busy){SCSYNC.again=true;return}
   SCSYNC.busy=true;
-  try{do{SCSYNC.again=false;await SCSYNC.ref.set({entries:SCLOG.slice(-60),feed:SCT.master.meta||null,feedLevain:SCT.levain.meta||null,starter:PROF.meta||null,settings:SETS.ready&&SETS.savedAt?{savedAt:SETS.savedAt,values:SETS.lastObj}:null,updated:Date.now()})}while(SCSYNC.again)}
+  try{do{SCSYNC.again=false;await SCSYNC.ref.set({entries:SCLOG.slice(-60),feed:FEED.meta||null,starter:PROF.meta||null,settings:SETS.ready&&SETS.savedAt?{savedAt:SETS.savedAt,values:SETS.lastObj}:null,updated:Date.now()})}while(SCSYNC.again)}
   catch(e){if(e&&e.code==='quota_exceeded'){const f=$('logFlash');if(f)f.textContent='Your Claude account log is full; older entries will be trimmed.'}
     else if(e&&(e.code==='revoked'||e.code==='not_granted'||e.code==='invalid_argument')){SCSYNC.ref=null;SCSYNC.state='local';scSyncNote()}}
   finally{SCSYNC.busy=false}
 }
 function mergeFeed(t,cf,first){
-  const lf=SCT[t].meta;
-  if(cf&&typeof cf.savedAt==='number'&&(!lf||cf.savedAt>lf.savedAt)){applyFeed(t,cf,null);return false}
-  if(first&&lf&&(!cf||lf.savedAt>(cf.savedAt||0))){const sh=SCT[t].shots,upF=!!sh.Feed.file&&!lf.assetId,upN=!!sh.Now.file&&!lf.nowAssetId;
-    saveFeed(t,upF&&upN?'both':upF?'Feed':upN?'Now':false,true);return true}
+  const lf=FEED.meta;
+  if(cf&&typeof cf.savedAt==='number'&&(!lf||cf.savedAt>lf.savedAt)){applyFeed(cf);return false}
+  if(first&&lf&&(!cf||lf.savedAt>(cf.savedAt||0))){scPush();return true}
   return false;
 }
 async function scInitSync(){
   try{
     if(!window.claude||typeof window.claude.use!=='function')return;
-    const [db,user,assets]=await Promise.all([window.claude.use('db'),window.claude.use('user'),window.claude.use('assets')]);
-    if(!db||!user)return;SCASSETS=assets;
+    const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+    if(!db||!user)return;
     const uid=await user.id();if(!uid)return;
     const ref=db.doc('data/users/'+uid+'/starter');
     SCSYNC.state='waiting';scSyncNote();
@@ -1138,10 +1033,6 @@ async function scInitSync(){
 }
 scSyncNote();scInitSync();
 setInterval(()=>{if(!document.hidden)calc()},60000);
-scInitAI();
-
-
-setInterval(()=>{if(!document.hidden)starterCheck()},60000);
 scInitAI();
 document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
 // Scrolling over a focused number box shouldn't change its value
