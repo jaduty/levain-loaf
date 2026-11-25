@@ -175,6 +175,8 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
 .status{margin:0;font-size:14px}
 .status b{color:var(--crust);font-weight:600}
 .cardform .kv{margin-top:4px;padding-top:12px;border-top:1px solid var(--line)}
+.kv dt.sub{padding-left:14px;font-size:13px}
+.kv dd.sub{font-size:13px;color:var(--muted)}
 .sc-note{font-size:12px;color:var(--muted);margin:10px 0 0;max-width:75ch}
 .foot{margin-top:28px;color:var(--muted);font-size:12px;max-width:75ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -452,7 +454,7 @@ function calc(){
   const peak=clamp(baseModel(rf/rs,fermC)*SB.f*scK().k,1,30);
   const rt=v=>r1(v).replace(/\.0$/,'');
   lvCard(peak,rs,rf,rw);
-  $('levKv').innerHTML=`<dt>Ratio</dt><dd>${rt(rs)} : ${rt(rf)} : ${rt(rw)}</dd><dt>${esc(mName(true))}</dt><dd>${g(seed)}</dd><dt>New flour</dt><dd>${g(nf)}</dd><dt>New water</dt><dd>${g(nw)}</dd><dt>Build makes</dt><dd>${g(need)}</dd><dt>Levain hydration</dt><dd>${Math.round(LH*100)}%</dd><dt>Peaks in about</dt><dd class="hl">${hrs(peak)}</dd>`+
+  $('levKv').innerHTML=`<dt>Ratio</dt><dd>${rt(rs)} : ${rt(rf)} : ${rt(rw)}</dd><dt>${esc(mName(true))}</dt><dd>${g(seed)}</dd><dt>New flour</dt><dd>${g(nf)}</dd>${flourRows(nf)}<dt>New water</dt><dd>${g(nw)}</dd><dt>Build makes</dt><dd>${g(need)}</dd><dt>Levain hydration</dt><dd>${Math.round(LH*100)}%</dd><dt>Peaks in about</dt><dd class="hl">${hrs(peak)}</dd>`+
     (!custom?`<dt style="grid-column:1/-1;font-size:12px">Includes about 10% extra plus 15 g to keep as next time's starter.</dt>`:
      need<lev?`<dt style="grid-column:1/-1;font-size:12px;color:var(--warn)">That's less than the ${g(lev)} of levain this dough needs. Build at least ${g(Math.ceil(minBuild/10)*10)}.</dt>`:
      `<dt style="grid-column:1/-1;font-size:12px">Use ${g(lev)} in the dough; about ${g(need-lev)} stays in the jar.</dt>`);
@@ -479,7 +481,7 @@ function calc(){
   const bulkEnd=add(mix,bulk), shape=add(bulkEnd,0.5), bake=add(shape,14);
   const ev=[
     [add(feed,-mPeak()),`<b>Feed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value} so it peaks when you build the levain`],
-    [feed,`<b>Build the levain</b> from ${esc(mName())}: ${g(seed)} ${esc(mName())} + ${g(nf)} flour + ${g(nw)} water`],
+    [feed,`<b>Build the levain</b> from ${esc(mName())}: ${g(seed)} ${esc(mName())} + ${flourList(nf)} + ${g(nw)} water`],
     [autoly,`<b>Autolyse</b> (optional): flour and water only, ${Math.round(wDisp)}°${unit} water`],
     ...(AI.some(x=>x.soak)?[[add(mix,-1),`<b>Soak</b> ${AI.filter(x=>x.soak).map(x=>x.l||x.n.toLowerCase()).join(' and ')} (see Suggestions)`]]:[]),
     [mix,`<b>Mix</b> in levain, then salt with the reserved water${(()=>{const m=AI.filter(x=>x.mix||x.split);return m.length?`, plus the ${m.map(x=>x.split?'grated half of the '+(x.l||x.n.toLowerCase()):(x.l||x.n.toLowerCase())).join(' and ')}`:''})()}`],
@@ -569,6 +571,11 @@ function lvComp(){const rs=Math.max(.1,val('r1')),rf=Math.max(.1,val('r2')),SH=M
   const sF=rs/(1+SH),fm=sF/(sF+rf),m=masterBlend(),nw=levNewBlend();
   return Object.assign(blendOf(fm*m.ww+(1-fm)*nw.ww,fm*m.rye+(1-fm)*nw.rye),{fm})}
 function stBlend(){return masterBlend()}
+// The levain's new flour, split into what to weigh out
+function flourParts(total){const b=levNewBlend(),out=[];const w=total*(1-b.ww-b.rye),ww=total*b.ww,ry=total*b.rye;
+  if(w>=0.5)out.push([$('ftype').value==='bread'||$('ftype').value==='bread2'?'Bread flour':'White flour',w]);if(ww>=0.5)out.push(['Whole wheat',ww]);if(ry>=0.5)out.push(['Rye',ry]);return out}
+function flourRows(total){const p=flourParts(total);return p.length>1?p.map(([n,v])=>`<dt class="sub">${n}</dt><dd class="sub">${g(v)}</dd>`).join(''):''}
+function flourList(total){const p=flourParts(total);return p.length>1?p.map(([n,v])=>`${g(v)} ${n.toLowerCase()}`).join(' + '):`${g(total)} ${(p[0]?p[0][0]:'flour').toLowerCase()}`}
 function blendTxt(b){const parts=[];if(b.ww>=0.005)parts.push(`${Math.round(b.ww*100)}% whole wheat`);if(b.rye>=0.005)parts.push(`${Math.round(b.rye*100)}% rye`);
   return parts.length?`${Math.round((1-b.ww-b.rye)*100)}% white, ${parts.join(', ')}`:'All white flour'}
 function fermTempC(){return $('box').value.trim()!==''?toC(val('box')):toC(val('room'))}
