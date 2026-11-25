@@ -136,6 +136,27 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
 .ai h3{margin:0 0 6px;font:600 11px var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--crust)}
 .ai ul{margin:6px 0;padding-left:18px;font-size:14px}
 .ai p{margin:0;font-size:14px}
+.sc-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sc-actions .flash{font-size:13px;color:var(--rye)}
+.chip{font:500 11px var(--body);padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.stagebar{position:relative;margin:14px 0 6px;height:8px;border-radius:999px;background:linear-gradient(90deg,var(--line),var(--ok-soft) 45%,var(--crust) 72%,var(--warn-soft) 88%,var(--warn))}
+.stagebar i{position:absolute;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--panel);border:3px solid var(--ink)}
+.stagelbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:10px}
+.signs{display:grid;grid-template-columns:auto auto 1fr;gap:8px 10px;align-items:baseline;margin:10px 0;font-size:14px}
+.signs dt{font-weight:600}
+.signs dd{margin:0}
+.signs .tone{font:600 11px var(--body);text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:999px;background:var(--line);color:var(--ink);justify-self:start;white-space:nowrap}
+.signs .tone.good{background:var(--ok-soft);color:var(--rye)}
+.signs .tone.warn{background:var(--warn-soft);color:var(--warn)}
+@media (max-width:520px){.signs{grid-template-columns:auto 1fr}.signs dd.note{grid-column:1/-1;margin-top:-4px;color:var(--muted)}}
+.sclog{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.sclog summary{cursor:pointer;font-weight:600;font-size:14px}
+.sclog p{font-size:14px;margin:8px 0}
+.sclog .tblwrap{overflow-x:auto}
+.sclog table{font-size:13px}
+.sclog th,.sclog td{padding:6px 10px}
+.sclog td{font-size:13px}
+.sclog button.x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px}
 .sc-note{font-size:12px;color:var(--muted);margin:10px 0 0;max-width:75ch}
 .foot{margin-top:28px;color:var(--muted);font-size:12px;max-width:75ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -258,9 +279,10 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
       </div>
       <div class="sc-out">
         <div class="verdict" id="scVerdict"><span class="pill">Waiting</span><p>Take a photo of your jar from the side, at eye level. Put a rubber band or a mark at the starter's level when you feed it.</p></div>
-        <div><button type="button" class="btn" id="askAI" hidden>Ask Claude about this photo</button></div>
+        <div class="sc-actions"><button type="button" class="btn" id="askAI" hidden>Ask Claude about this photo</button><button type="button" class="btn" id="logBtn" disabled>Log this check</button><span class="flash" id="logFlash" role="status"></span></div>
         <div class="ai" id="aiOut" hidden></div>
       </div>
+      <details class="sclog" id="scLog"><summary id="logSum">Your starter's log</summary><p id="logTxt"></p><div class="tblwrap"><table><thead><tr><th>When</th><th>Feed</th><th>Temp</th><th>Hours</th><th>Rise</th><th>Result</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div></details>
       <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. Photos stay on your device and aren't saved.<span id="aiNote"></span></p>
     </div>
   </section>
@@ -382,7 +404,7 @@ function calc(){
   const useBox=$('box').value.trim()!=='';
   const fermC=useBox?toC(val('box')):roomC;
   const tf=Math.pow(2,(24-fermC)/8);
-  const peak=clamp((4+2.2*Math.log2(Math.max(1,rf/rs)))*tf,2,24);
+  const peak=clamp((4+2.2*Math.log2(Math.max(1,rf/rs)))*tf*scK().k,1,30);
   const rt=v=>r1(v).replace(/\.0$/,'');
   $('levKv').innerHTML=`<dt>Ratio</dt><dd>${rt(rs)} : ${rt(rf)} : ${rt(rw)}</dd><dt>Ripe starter</dt><dd>${g(seed)}</dd><dt>New flour</dt><dd>${g(nf)}</dd><dt>New water</dt><dd>${g(nw)}</dd><dt>Build makes</dt><dd>${g(need)}</dd><dt>Levain hydration</dt><dd>${Math.round(LH*100)}%</dd><dt>Peaks in about</dt><dd class="hl">${hrs(peak)}</dd>`+
     `<dt style="grid-column:1/-1;font-size:12px">Includes about 10% extra plus 15 g to keep as next time's starter.</dt>`;
@@ -522,7 +544,7 @@ function scPick(k,file){
   if(sh.url)URL.revokeObjectURL(sh.url);
   sh.url=URL.createObjectURL(file);sh.file=file;sh.taps=[];
   if(k==='Feed'&&file.lastModified&&!$('fedAt').value)$('fedAt').value=toLocalInput(new Date(file.lastModified));
-  $('aiOut').hidden=true;scDraw(k);starterCheck();
+  $('aiOut').hidden=true;SC.lastAI=null;scDraw(k);starterCheck();
 }
 function toLocalInput(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
 function scSetMode(m){SC.mode=m;$('scBand').setAttribute('aria-pressed',m==='band');$('scTwo').setAttribute('aria-pressed',m==='two');
@@ -535,22 +557,27 @@ function scMeasure(){
   const fn=(n[0]-n[1])/(n[0]-n[2]),ff=(f[0]-f[1])/(f[0]-f[2]);
   if(!(fn>0)||!(ff>0)||!isFinite(fn)||!isFinite(ff))return null;return fn/ff-1;
 }
+let SCLOG=[];try{SCLOG=JSON.parse(localStorage.getItem('sd-starter-log')||'[]')||[]}catch(e){SCLOG=[]}
+function scModel(ratio,tC){return clamp((4+2.2*Math.log2(Math.max(1,ratio)))*Math.pow(2,(24-tC)/8),2,24)}
+function scK(){const o=SCLOG.filter(e=>e.peakObs&&e.el>0).map(e=>e.el/scModel(e.ratio,e.tC)).sort((a,b)=>a-b);
+  if(!o.length)return {k:1,n:0};const m=o.length%2?o[(o.length-1)/2]:(o[o.length/2-1]+o[o.length/2])/2;return {k:clamp(m,0.4,2.5),n:o.length}}
+function scSaveLog(){try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG.slice(-60)))}catch(e){}}
 function scContext(){
   const ratio=+$('scRatio').value||1;
   const roomC=toC(val('room')),useBox=$('box').value.trim()!=='';const tC=useBox?toC(val('box')):roomC;
   const tf=Math.pow(2,(24-tC)/8);
-  const peak=clamp((4+2.2*Math.log2(Math.max(1,ratio)))*tf,2,24);
+  const K=scK();const peak=clamp(scModel(ratio,tC)*K.k,1,30);
   const fv=$('fedAt').value;const el=fv?(Date.now()-new Date(fv).getTime())/36e5:null;
-  return {ratio,tC,useBox,peak,el:el!=null&&el>=0&&el<72?el:null};
+  return {ratio,tC,useBox,peak,K,el:el!=null&&el>=0&&el<72?el:null};
 }
 function starterCheck(){
   const v=$('scVerdict');if(!v)return;
   const R=scMeasure(),c=scContext();
   const tTxt=`${Math.round(fromC(c.tC))}°${unit}${c.useBox?' in the proofing box':''}`;
-  const exp=`At 1:${c.ratio}:${c.ratio} and ${tTxt}, it usually peaks about ${hrs(c.peak)} after feeding.`;
-  let pill='',cls='',big='',msg='';
+  const exp=c.K.n?`At 1:${c.ratio}:${c.ratio} and ${tTxt}, your starter usually peaks about ${hrs(c.peak)} after feeding (from ${c.K.n} logged check${c.K.n>1?'s':''}).`:`At 1:${c.ratio}:${c.ratio} and ${tTxt}, it usually peaks about ${hrs(c.peak)} after feeding.`;
+  let pill='',cls='',big='',msg='';SC.last={rise:R,pill:''};
   if(R==null){
-    if(!SC.shots.Now.url){v.innerHTML='';const p=document.createElement('span');p.className='pill';p.textContent='Waiting';const t=document.createElement('p');
+    if(!SC.shots.Now.url){$('logBtn').disabled=true;v.innerHTML='';const p=document.createElement('span');p.className='pill';p.textContent='Waiting';const t=document.createElement('p');
       t.textContent=(c.el!=null?`Fed ${hrs(c.el)} ago. `:'')+exp+' Take a side photo of the jar to measure the rise.';v.append(p,t);return}
     pill='Mark the photo';msg=(c.el!=null?`Fed ${hrs(c.el)} ago. `:'')+exp;
   }else{
@@ -560,6 +587,7 @@ function starterCheck(){
     else if(R<0.85){pill='Getting close';cls='ok';msg=late?`${pct}% after ${hrs(c.el)}, past when it usually peaks. If the top is flat or there's a streak above it on the glass, it has already peaked. Use it now or feed it.`:`Nearly there. Look for a domed top and lots of bubbles. ${c.el!=null&&c.el<c.peak?`Expected peak in about ${hrs(c.peak-c.el)}.`:''}`}
     else{pill=late?'Use it now':'Ready';cls=late?'warn':'go';msg=late?`Doubled, and it's ${hrs(c.el)} since feeding, so it may be starting to fall. Use it now; if it's runny or smells sharp, feed it first.`:`Close to doubled${c.el!=null?` after ${hrs(c.el)}`:''}. This is the window to build your levain or mix.${early?' It rose faster than usual, so use it soon.':''}`}
   }
+  SC.last.pill=pill;$('logBtn').disabled=!(c.el!=null&&(R!=null||SC.lastAI));
   v.innerHTML='';const p=document.createElement('span');p.className='pill'+(cls?' '+cls:'');p.textContent=pill;v.append(p);
   if(big){const b=document.createElement('span');b.className='big';b.textContent=big;const l=document.createElement('span');l.style.cssText='font-size:13px;color:var(--muted)';l.textContent='rise'+(c.el!=null?` · ${hrs(c.el)} since feeding`:'');v.append(b,l)}
   const t=document.createElement('p');t.textContent=msg;v.append(t);
@@ -580,23 +608,47 @@ async function scAsk(){
   if(!now){out.hidden=false;out.textContent='Take a photo of the starter first.';return}
   const imgs=[now];const two=SC.mode==='two'&&SC.shots.Feed.file;if(two)imgs.push(SC.shots.Feed.file);
   const c=scContext(),R=scMeasure();
-  const prompt=`You are helping a home baker decide whether their sourdough starter is ready to use (at or near its peak). `+
-    `Image 1 is the starter in its jar now.${two?' Image 2 is the same jar right after feeding.':''}\n`+
-    `Context: fed at a ratio of 1:${c.ratio}:${c.ratio} (starter:flour:water by weight), ${c.el!=null?`about ${c.el.toFixed(1)} hours ago`:'feeding time unknown'}, kept at about ${Math.round(fromC(c.tC))}°${unit}. `+
-    `At that ratio and temperature it typically peaks around ${c.peak.toFixed(1)} hours after feeding. `+
-    `${R!=null?`The baker marked the photo${two?'s':''}, which measures a rise of about ${Math.round(R*100)}% since feeding (approximate).`:'No rise measurement is available.'}\n`+
-    `Look for: a rubber band or mark at the starting level; whether the top is domed, flat, or sunken; a film or streak on the glass above the current level (it rose higher and fell); bubble size and how far they reach; liquid on top. `+
-    `Reply with only a JSON object: {"verdict": "rising" | "peak" | "past_peak" | "hungry" | "unclear", "headline": "one short sentence", "seen": ["2-4 short observations from the photo"], "advice": "one or two sentences on what to do now"}. `+
-    `"peak" means use it now; "past_peak" means usable but falling; "hungry" means it needs a feed first. Use "unclear" if the photo doesn't show the starter clearly.`;
+  const hist=c.K.n?`This baker's log of ${c.K.n} earlier check${c.K.n>1?'s':''} shows this starter peaks about ${Math.round(Math.abs(c.K.k-1)*100)}% ${c.K.k<1?'faster':'slower'} than typical, so at this ratio and temperature it should peak around ${c.peak.toFixed(1)} hours after feeding. `:`At that ratio and temperature a typical starter peaks around ${c.peak.toFixed(1)} hours after feeding. `;
+  const prompt=`You are an experienced sourdough baker looking at photos of a home baker's starter to judge where it is in its rise-and-fall cycle and whether it's ready to use. `+
+    `Image 1 is the starter in its jar now.${two?' Image 2 is the same jar right after feeding: compare the two, including bubble activity.':''}\n`+
+    `Context: fed at 1:${c.ratio}:${c.ratio} (starter:flour:water by weight), ${c.el!=null?`about ${c.el.toFixed(1)} hours ago`:'feeding time unknown'}, kept at about ${Math.round(fromC(c.tC))}°${unit}. `+hist+
+    `${R!=null?`The baker tapped the levels on the photo${two?'s':''}, which measures a rise of about ${Math.round(R*100)}% since feeding (approximate; trust what you see if it clearly disagrees).`:'No tapped measurement; judge the rise by eye, using a rubber band or mark if one is visible.'}\n`+
+    `Assess each sign from the photo: `+
+    `rise (how far above the start mark, roughly what % if a mark is visible); `+
+    `bubbles (size: fine, medium, large; whether they run through the whole jar or only near the top; whether they look active or collapsing); `+
+    `surface (domed, flat, sunken, wrinkled, popping bubbles); `+
+    `residue (a film or streak on the glass above the current level means it peaked and fell); `+
+    `texture (airy and web-like vs dense vs runny; any grey liquid or dark streaks on top). `+
+    `Then combine the signs with the timing into one stage. Say "can't tell" for any sign the photo doesn't show; don't guess.\n`+
+    `Reply with only this JSON: {"stage": "just_fed" | "rising" | "near_peak" | "peak" | "falling" | "collapsed" | "unclear", `+
+    `"action": "wait" | "use_now" | "use_soon" | "feed_first", "confidence": "low" | "medium" | "high", `+
+    `"check_again_hours": number or null, "headline": "one short sentence", `+
+    `"signs": [{"sign": "Rise" | "Bubbles" | "Surface" | "Residue" | "Texture", "rating": "2-3 words", "tone": "good" | "neutral" | "warn", "note": "one short sentence"}], `+
+    `${two?'"compare": "one or two sentences on what changed between the photos", ':''}"advice": "one or two sentences on what to do now"}`;
   const btn=$('askAI');btn.disabled=true;out.hidden=false;out.textContent='Looking at your starter…';
   scCtl=new AbortController();
   try{
-    const r=await scSample.json(prompt,{images:imgs,signal:scCtl.signal});
-    const V={rising:['Still rising',''],peak:['Ready',' go'],past_peak:['Just past peak',' warn'],hungry:['Needs a feed',' warn'],unclear:['Unclear','']}[r&&r.verdict]||['Claude says',''];
-    out.innerHTML='';const h=document.createElement('h3');h.textContent="Claude's read";const pl=document.createElement('span');pl.className='pill'+V[1];pl.textContent=V[0];
-    const hl=document.createElement('p');hl.style.margin='8px 0 0';hl.style.fontWeight='600';hl.textContent=String(r&&r.headline||'');out.append(h,pl,hl);
-    if(r&&Array.isArray(r.seen)&&r.seen.length){const ul=document.createElement('ul');r.seen.slice(0,5).forEach(x=>{const li=document.createElement('li');li.textContent=String(x);ul.append(li)});out.append(ul)}
-    if(r&&r.advice){const a=document.createElement('p');a.textContent=String(r.advice);out.append(a)}
+    const r=await scSample.json(prompt,{images:imgs,signal:scCtl.signal})||{};
+    const ACT={wait:['Wait',''],use_now:['Use it now',' go'],use_soon:['Use it soon',' ok'],feed_first:['Feed it first',' warn']}[r.action]||['Claude says',''];
+    const POS={just_fed:5,rising:30,near_peak:58,peak:74,falling:88,collapsed:97}[r.stage];
+    SC.lastAI=r.stage&&r.stage!=='unclear'?String(r.stage):null;
+    out.innerHTML='';
+    const h=document.createElement('h3');h.textContent="Claude's read";out.append(h);
+    const top=document.createElement('div');top.className='sc-actions';
+    const pl=document.createElement('span');pl.className='pill'+ACT[1];pl.textContent=ACT[0];top.append(pl);
+    if(r.confidence){const cf=document.createElement('span');cf.className='chip';cf.textContent=String(r.confidence)+' confidence';top.append(cf)}
+    out.append(top);
+    if(POS!=null){const bar=document.createElement('div');bar.className='stagebar';const m=document.createElement('i');m.style.left=POS+'%';bar.append(m);
+      const lb=document.createElement('div');lb.className='stagelbl';['Fed','Rising','Near peak','Peak','Falling'].forEach(x=>{const sp=document.createElement('span');sp.textContent=x;lb.append(sp)});out.append(bar,lb)}
+    if(r.headline){const hl=document.createElement('p');hl.style.fontWeight='600';hl.textContent=String(r.headline);out.append(hl)}
+    if(Array.isArray(r.signs)&&r.signs.length){const dl=document.createElement('dl');dl.className='signs';
+      r.signs.slice(0,6).forEach(x=>{if(!x)return;const dt=document.createElement('dt');dt.textContent=String(x.sign||'');
+        const t=document.createElement('dd');t.className='tone'+(x.tone==='good'?' good':x.tone==='warn'?' warn':'');t.textContent=String(x.rating||'');
+        const nt=document.createElement('dd');nt.className='note';nt.textContent=String(x.note||'');dl.append(dt,t,nt)});out.append(dl)}
+    if(r.compare){const cp=document.createElement('p');cp.textContent='Before vs. now: '+String(r.compare);out.append(cp)}
+    if(r.advice){const a=document.createElement('p');a.style.marginTop='8px';a.textContent=String(r.advice);out.append(a)}
+    const ca=Number(r.check_again_hours);if(r.action==='wait'&&ca>0&&ca<24){const q=document.createElement('p');q.style.cssText='margin-top:6px;color:var(--muted);font-size:13px';q.textContent=`Check again in about ${hrs(ca)}.`;out.append(q)}
+    starterCheck();
   }catch(e){
     const code=e&&e.code;
     if(code==='not_granted'||code==='sampling_disabled'||code==='images_unavailable'||code==='capability_disabled'||code==='not_declared'){btn.hidden=true;out.textContent='Claude isn\'t available for photos here. The rise measurement above still works.'}
@@ -614,6 +666,30 @@ async function scAsk(){
 });
 $('scBand').onclick=()=>scSetMode('band');$('scTwo').onclick=()=>scSetMode('two');
 $('askAI').onclick=scAsk;
+function scRenderLog(){
+  const n=SCLOG.length;$('logSum').textContent=`Your starter's log (${n})`;$('scLog').hidden=!n;
+  const K=scK(),txt=$('logTxt');
+  if(!K.n)txt.textContent='Log a check when your starter is at or near peak, and the app will learn how fast your starter rises.';
+  else{const pct=Math.round(Math.abs(K.k-1)*100);txt.textContent=`From ${K.n} peak check${K.n>1?'s':''}, your starter peaks ${pct<5?'right about on the typical schedule':`about ${pct}% ${K.k<1?'faster':'slower'} than typical`}. The peak times in the levain card and starter check now use this.`}
+  const body=$('logBody');body.innerHTML='';
+  SCLOG.slice().reverse().slice(0,12).forEach(e=>{const tr=document.createElement('tr');
+    const d=new Date(e.t);const cells=[d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}),
+      `1:${e.ratio}:${e.ratio}`,`${Math.round(fromC(e.tC))}°${unit}`,hrs(e.el),e.rise!=null?`${Math.round(e.rise*100)}%`:'—',e.result||''];
+    cells.forEach(x=>{const td=document.createElement('td');td.textContent=x;tr.append(td)});
+    const td=document.createElement('td');const b=document.createElement('button');b.className='x';b.type='button';b.textContent='×';b.setAttribute('aria-label','Remove this entry');
+    b.onclick=()=>{SCLOG=SCLOG.filter(x=>x!==e);scSaveLog();scRenderLog();calc()};td.append(b);tr.append(td);body.append(tr)});
+}
+function scLog(){
+  const c=scContext(),R=scMeasure();if(c.el==null)return;
+  const ai=SC.lastAI;const peakObs=(R!=null&&R>=0.85&&R<=1.6)||ai==='peak';
+  const STG={just_fed:'Just fed',rising:'Rising',near_peak:'Near peak',peak:'Peak',falling:'Falling',collapsed:'Collapsed'};
+  SCLOG.push({t:Date.now(),ratio:c.ratio,tC:c.tC,el:c.el,rise:R,result:ai?('Claude: '+(STG[ai]||ai)):(SC.last&&SC.last.pill)||'',peakObs});
+  scSaveLog();scRenderLog();calc();
+  const f=$('logFlash');f.textContent=peakObs?'Logged. This one counts toward your starter\'s peak time.':'Logged.';setTimeout(()=>{f.textContent=''},4000);
+}
+$('logBtn').onclick=scLog;
+scRenderLog();
+
 setInterval(()=>{if(!document.hidden)starterCheck()},60000);
 scInitAI();
 document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
