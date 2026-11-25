@@ -115,6 +115,9 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
 .tabs button[aria-current="page"]{color:var(--ink);border-bottom-color:var(--crust)}
 .tabs button:hover{color:var(--ink)}
 #viewStarter .out{max-width:1120px}
+.pltbl td,.pltbl th{padding:8px 12px}
+.pltbl td{font-size:14px}
+.pltbl tr.best td{background:var(--crust-soft);font-weight:600}
 /* Starter check */
 .sc-top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:14px}
 .sc-top .f{display:flex;gap:8px;align-items:center}
@@ -330,6 +333,25 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
       </div>
     </section>
   </div>
+
+  <section>
+    <h2>Feeding plan</h2>
+    <div class="card">
+      <div class="seg" role="group" aria-label="Plan" style="margin-bottom:14px">
+        <button type="button" id="plCounter" aria-pressed="true">On the counter</button><button type="button" id="plFridge" aria-pressed="false">In the fridge</button><button type="button" id="plReady" aria-pressed="false">Ready by…</button>
+      </div>
+      <input type="hidden" id="planMode" value="counter">
+      <div class="cardform" style="margin-bottom:14px">
+        <div class="f" id="plEveryRow"><label for="planEvery">Feed every</label><div class="num"><select id="planEvery"><option value="8">8 hours</option><option value="12" selected>12 hours</option><option value="24">24 hours</option></select></div></div>
+        <div class="f dt" id="plReadyRow" hidden><label for="readyAt">Ready by</label><div class="num"><input id="readyAt" type="datetime-local"></div></div>
+      </div>
+      <p class="status" id="plHead"></p>
+      <ol class="sched" id="plSteps" style="margin-top:10px"></ol>
+      <div class="tblwrap" id="plTblWrap" style="margin-top:14px"><table class="pltbl"><thead><tr><th>Feed</th><th>Peaks in</th><th>Good for</th></tr></thead><tbody id="plTbl"></tbody></table></div>
+      <ul class="notes" id="plTips" style="margin-top:14px"></ul>
+      <p class="sc-note" id="plBasis"></p>
+    </div>
+  </section>
 
   <section>
     <h2>Starter check</h2>
@@ -569,7 +591,7 @@ function calc(){
   save();
 }
 
-const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','buildG','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt','stName','stWW','stRye','lvWW','lvRye','stTemp','keepG'];
+const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','buildG','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt','stName','stWW','stRye','lvWW','lvRye','stTemp','keepG','planMode','planEvery','readyAt'];
 function save(){try{const o={unit,anchor,scTarget:TG};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}try{setDirty()}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW';if(o.scTarget==='levain')TG_LOAD='levain'}catch(e){}}
 
@@ -614,7 +636,7 @@ function fmtClock(d){return d.toLocaleTimeString([], {hour:'numeric',minute:'2-d
 function sinceH(fv){if(!fv)return null;const h=(Date.now()-new Date(fv).getTime())/36e5;return h>=0&&h<72?h:null}
 function stShow(){
   const nm=mName(true),m=masterBlend();
-  $('navStarter').textContent=$('stName').value.trim()?nm:'Starter';$('hNow').textContent=`${nm} now`;try{feedCard()}catch(e){}
+  $('navStarter').textContent=$('stName').value.trim()?nm:'Starter';$('hNow').textContent=`${nm} now`;try{feedCard()}catch(e){}try{planCard()}catch(e){}
   $('stBlend').textContent=blendTxt(m)+(m.f<0.97?` · peaks about ${Math.round((1-m.f)*100)}% sooner than all-white`:'');
   const pk=mPeak(),fv=$('fedAt').value,el=sinceH(fv),st=$('mStat');st.textContent='';
   if(el==null){st.textContent=`At 1:${$('scRatio').value}:${$('scRatio').value} it usually peaks about ${hrs(pk)} after feeding. Tap "I just fed it" when you feed.`}
@@ -652,6 +674,83 @@ function showView(v){
 }
 const toTop=()=>{try{window.scrollTo(0,0)}catch(e){}};$('navBake').onclick=()=>{showView('bake');toTop()};$('navStarter').onclick=()=>{showView('starter');toTop()};
 window.addEventListener('hashchange',()=>showView(/^#?starter$/.test(location.hash)?'starter':'bake'));
+
+// ---------- Feeding plan ----------
+const PL_RATIOS=[1,2,3,5,10,15,20];
+function plPeak(r,tC){return clamp(baseModel(r,tC==null?starterTempC():tC)*masterBlend().f*scK().k,1,30)}
+function plGrams(r){const keep=$('keepG').value.trim()===''?100:Math.max(0,val('keepG'));const st=keep/(1+2*r);return `${g(st)} ${esc(mName())} + ${g(st*r)} flour + ${g(st*r)} water`}
+function plRatioTxt(r){const x=Math.round(r*10)/10;return `1:${x}:${x}`}
+function nextMix(){const [hh,mm]=($('mixAt').value||'09:00').split(':').map(Number);const d=new Date();d.setHours(hh,mm,0,0);if(d.getTime()<Date.now()+60*6e4)d.setDate(d.getDate()+1);return d}
+function lvPeakH(){const rs=Math.max(.1,val('r1')),rf=Math.max(.1,val('r2'));return clamp(baseModel(rf/rs,fermTempC())*lvComp().f*scK().k,1,30)}
+function plStep(d,html){return `<li><time>${fmtTime(d)}<small>${dayWord(d).trim()}</small></time><p>${html}</p></li>`}
+function planTips(){
+  const L=SCLOG.filter(e=>e.jar!=='levain').slice(-6),tips=[];
+  if(!L.length)return tips;
+  const late=L.filter(e=>/Falling|Collapsed|Use it now/.test(e.result||'')).length;
+  const slow=L.filter(e=>e.rise!=null&&e.rise<0.6&&e.el>=baseModel(e.ratio,e.tC)*(e.bf||1)).length;
+  if(late>=2||(late>=1&&L.length<=2))tips.push(['warn','Often caught past peak',`${late} of your last ${L.length} checks found ${esc(mName())} already falling. Check about an hour earlier, or switch to a bigger ratio so the peak lands later.`]);
+  if(slow>=2)tips.push(['warn','Running slow',`${slow} recent checks rose less than 60% by the expected peak. A few days of 1:1:1 feeds twice a day somewhere warm (75–80°F) usually brings a sluggish starter back.`]);
+  const K=scK();if(K.n>=2&&Math.abs(K.k-1)>=0.15)tips.push(['',K.k<1?'A fast starter':'A slow starter',`From your log, ${esc(mName())} peaks about ${Math.round(Math.abs(K.k-1)*100)}% ${K.k<1?'sooner':'later'} than typical. The times below already allow for that.`]);
+  return tips;
+}
+function planCard(){
+  const mode=$('planMode').value||'counter',tC=starterTempC(),T=`${Math.round(fromC(tC))}°${unit}`,nm=esc(mName()),NM=esc(mName(true));
+  ['Counter','Fridge','Ready'].forEach(k=>$('pl'+k).setAttribute('aria-pressed',mode===k.toLowerCase()));
+  $('plEveryRow').hidden=mode!=='counter';$('plReadyRow').hidden=mode!=='ready';
+  const head=$('plHead'),steps=$('plSteps'),tbl=$('plTbl');head.innerHTML='';steps.innerHTML='';
+  const now=new Date(),add=(d,h)=>new Date(d.getTime()+h*36e5),fv=$('fedAt').value,fed=fv?new Date(fv):null;
+  let best=null;
+  if(mode==='counter'){
+    const every=+$('planEvery').value||12;
+    // the ratio whose peak lands closest to the next feed, without running far past it
+    best=PL_RATIOS.reduce((b,r)=>{const pk=plPeak(r,tC);const sc=pk<=every*1.05?every-pk:(pk-every)*3;return sc<b.sc?{r,sc}:b},{r:1,sc:1e9}).r;
+    const pk=plPeak(best,tC);
+    head.innerHTML=`Feed <b>${plRatioTxt(best)}</b> every ${every} h at ${T}. It peaks about ${hrs(pk)} after each feed${pk>=every*0.75?', so it\'s at or near peak when the next feed is due':`, then rests about ${hrs(every-pk)} past peak before the next feed`}. Each feed: ${plGrams(best)}.`;
+    const start=fed&&!isNaN(fed)&&now-fed<every*36e5*2?fed:now;let nx=add(start,every);while(nx<now)nx=add(nx,every);
+    steps.innerHTML=[0,1,2].map(i=>plStep(add(nx,i*every),`<b>Feed ${plRatioTxt(best)}</b> (peak around ${fmtTime(add(nx,i*every+pk))})`)).join('');
+    if(pk<every*0.75)head.innerHTML+=` To keep it closer to peak at feeding time, keep it somewhere cooler, or refrigerate it a few hours after feeding.`;
+  }else if(mode==='ready'){
+    const rv=$('readyAt').value,tgt=rv?new Date(rv):null;
+    if(!tgt||isNaN(tgt)||tgt<=now){head.textContent='Pick when you want it at peak, for example when you plan to build a levain, and the app works out how to feed it now.';}
+    else{
+      const h=(tgt-now)/36e5,f=plPeak(1,tC)/baseModel(1,tC); // personal speed at this temperature
+      let r=Math.pow(2,((h/f)*Math.pow(2,-(24-tC)/8)-4)/2.2);
+      if(!isFinite(r)||r<1)r=1;r=Math.min(r,20);
+      const nice=[1,1.5,2,3,4,5,7,10,15,20];best=nice.reduce((b,x)=>Math.abs(Math.log(x/r))<Math.abs(Math.log(b/r))?x:b,1);
+      const pk=plPeak(best,tC);
+      if(h<plPeak(1,tC)*0.9){head.innerHTML=`That's sooner than even a 1:1:1 feed peaks (about ${hrs(plPeak(1,tC))}). Feed <b>1:1:1</b> now and keep it somewhere warm, around 78–80°F, or use it just before peak.`;best=1}
+      else head.innerHTML=`Feed <b>${plRatioTxt(best)}</b> now: ${plGrams(best)}. At ${T} it should peak around <b>${fmtTime(add(now,pk))}${dayWord(add(now,pk))}</b>.`;
+      steps.innerHTML=plStep(now,`<b>Feed ${plRatioTxt(best)}</b>`)+plStep(add(now,plPeak(best,tC)),`<b>Peak</b>: build your levain or use it`);
+    }
+  }else{
+    // Fridge: weekly care, plus a wake-up schedule for the next bake
+    const outH=[plPeak(2,tC)*0.3,plPeak(2,tC)*0.45];
+    head.innerHTML=`<b>Weekly care:</b> once a week, feed <b>1:2:2</b> (${plGrams(2)}), leave it on the counter about ${hrs(outH[0])}–${hrs(outH[1])} until it rises 25–50%, then refrigerate. A little activity before chilling keeps it healthy for the week.`;
+    const mix=nextMix(),build=add(mix,-lvPeakH()),p1=plPeak(1,tC),wake=p1*1.3;
+    const feed2=add(build,-p1),feed1=add(feed2,-wake);
+    const rows=[];
+    if(feed1>now){
+      rows.push(plStep(feed1,`<b>Take ${nm} out</b> and feed right away at 1:1:1 (keep about 20–30 g, discard the rest). No need to warm it first; this first feed runs about 30% slower from cold.`));
+      rows.push(plStep(feed2,`<b>Feed again 1:1:1</b> when it has roughly doubled. It should be lively now.`));
+    }else if(add(build,-p1)>now){
+      rows.push(plStep(add(build,-p1),`<b>Take ${nm} out and feed 1:1:1</b>. There's only time for one wake-up feed, so give it a warm spot.`));
+    }else rows.push(plStep(now,`<b>Not enough time to wake ${nm} for this mix time.</b> Move the Mix time later on the Bake page, or build the levain now and give it extra time.`));
+    rows.push(plStep(build,`<b>Build the levain</b> from ${nm} at its peak (see the Bake page for amounts).`));
+    rows.push(plStep(add(build,0.1),`<b>Feed what's left 1:2:2</b>, leave it out ${hrs(outH[0])}–${hrs(outH[1])}, then back in the fridge.`));
+    rows.push(plStep(mix,`<b>Mix</b> the dough (Mix time on the Bake page).`));
+    const night=[feed1,feed2,build].some(d=>d>now&&(d.getHours()>=23||d.getHours()<6));
+    if(night)rows.push(`<li style="border:0;padding:8px 0 0"><p style="color:var(--muted)">Some steps land overnight. To sleep through, give the second feed at bedtime at <b>1:5:5</b> instead (it peaks about ${hrs(plPeak(5,tC))} later) and build the levain when you get up, or move the Mix time later.</p></li>`);
+    steps.innerHTML=`<li style="border:0;padding:4px 0 6px"><p><b>To bake from the fridge</b>, for your next mix at ${fmtTime(mix)}${dayWord(mix)}:</p></li>`+rows.join('');
+    best=2;
+  }
+  tbl.innerHTML=[1,2,3,5,10].map(r=>{const pk=plPeak(r,tC);const use=pk<=6?'Quick turnaround, warm days':pk<=9?'Feeding twice a day':pk<=13?'Overnight, or every 12 h':'Once a day, or a long gap';
+    return `<tr${r===best&&mode!=='fridge'?' class="best"':''}><td>${plRatioTxt(r)}</td><td>${hrs(pk)}</td><td>${use}</td></tr>`}).join('');
+  $('plTblWrap').hidden=mode==='fridge';
+  $('plTips').innerHTML=planTips().map(([c,t,b])=>`<li class="${c}"><b>${t}</b>${b}</li>`).join('');
+  const K=scK();
+  $('plBasis').textContent=`Times use ${mName()} kept at ${Math.round(fromC(tC))}°${unit}${K.n?` and ${K.n} logged peak check${K.n>1?'s':''}`:' and typical timing; log a few peak checks below to personalize them'}.`;
+}
+['Counter','Fridge','Ready'].forEach(k=>$('pl'+k).onclick=()=>{$('planMode').value=k.toLowerCase();if(k==='Ready'&&!$('readyAt').value){const d=new Date(Date.now()+10*36e5);d.setMinutes(0);$('readyAt').value=toLocalInput(d)}calc()});
 
 // ---------- Starter check (either jar) ----------
 let TG='master',TG_LOAD=null;
