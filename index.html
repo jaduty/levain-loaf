@@ -244,6 +244,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     <section>
       <h2>Levain build</h2>
       <div class="card">
+        <div class="f" style="margin-bottom:12px"><label for="buildG">Build size<small>leave blank for the minimum</small></label><div class="num"><input id="buildG" type="number" min="0" step="10" placeholder="auto"><i>g</i></div></div>
         <dl class="kv" id="levKv"></dl>
       </div>
     </section>
@@ -401,7 +402,8 @@ function calc(){
   if(mixW<0){$('tbody').insertAdjacentHTML('beforeend','<tr><td colspan="4" style="color:var(--warn)">The levain holds more water than the formula allows. Lower the levain % or raise hydration.</td></tr>')}
 
   // Levain build
-  const need=lev*1.1+15, rsum=rs+rf+rw, seed=need*rs/rsum, nf=need*rf/rsum, nw=need*rw/rsum;
+  const minBuild=lev*1.1+15,bg=val('buildG'),custom=$('buildG').value.trim()!==''&&bg>0;
+  const need=custom?bg:minBuild, rsum=rs+rf+rw, seed=need*rs/rsum, nf=need*rf/rsum, nw=need*rw/rsum;
   const roomC=toC(val('room'));
   const useBox=$('box').value.trim()!=='';
   const fermC=useBox?toC(val('box')):roomC;
@@ -409,7 +411,9 @@ function calc(){
   const peak=clamp((4+2.2*Math.log2(Math.max(1,rf/rs)))*tf*scK().k,1,30);
   const rt=v=>r1(v).replace(/\.0$/,'');
   $('levKv').innerHTML=`<dt>Ratio</dt><dd>${rt(rs)} : ${rt(rf)} : ${rt(rw)}</dd><dt>Ripe starter</dt><dd>${g(seed)}</dd><dt>New flour</dt><dd>${g(nf)}</dd><dt>New water</dt><dd>${g(nw)}</dd><dt>Build makes</dt><dd>${g(need)}</dd><dt>Levain hydration</dt><dd>${Math.round(LH*100)}%</dd><dt>Peaks in about</dt><dd class="hl">${hrs(peak)}</dd>`+
-    `<dt style="grid-column:1/-1;font-size:12px">Includes about 10% extra plus 15 g to keep as next time's starter.</dt>`;
+    (!custom?`<dt style="grid-column:1/-1;font-size:12px">Includes about 10% extra plus 15 g to keep as next time's starter.</dt>`:
+     need<lev?`<dt style="grid-column:1/-1;font-size:12px;color:var(--warn)">That's less than the ${g(lev)} of levain this dough needs. Build at least ${g(Math.ceil(minBuild/10)*10)}.</dt>`:
+     `<dt style="grid-column:1/-1;font-size:12px">Use ${g(lev)} in the dough; about ${g(need-lev)} stays in the jar.</dt>`);
 
   // Water temp
   const ddtC=toC(val('ddt')),flC=toC(val('flourT'));
@@ -493,7 +497,7 @@ function calc(){
   save();
 }
 
-const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt'];
+const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','buildG','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt'];
 function save(){try{const o={unit,anchor,scMode:SC.mode};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW';if(o.scMode==='two')scSetMode('two')}catch(e){}}
 
