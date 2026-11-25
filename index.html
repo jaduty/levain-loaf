@@ -110,6 +110,11 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
 .notes li b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px;color:var(--rye)}
 .notes li.warn b{color:var(--warn)}
 .credit{margin:14px 0 0;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;max-width:75ch}
+.tabs{display:flex;gap:4px;margin:0 0 20px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;color:var(--muted);font:600 15px var(--body);padding:8px 14px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button[aria-current="page"]{color:var(--ink);border-bottom-color:var(--crust)}
+.tabs button:hover{color:var(--ink)}
+#viewStarter .out{max-width:1120px}
 /* Starter check */
 .sc-top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:14px}
 .sc-top .f{display:flex;gap:8px;align-items:center}
@@ -198,6 +203,8 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     <button id="uC" aria-pressed="false">°C</button><button id="uF" aria-pressed="true">°F</button>
   </div>
 </header>
+<nav class="tabs" aria-label="Pages"><button type="button" id="navBake" aria-current="page">Bake</button><button type="button" id="navStarter">Starter</button></nav>
+<div id="viewBake">
 
 <div class="grid">
 <form class="inputs" id="form" onsubmit="return false">
@@ -234,7 +241,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     <div class="f"><label for="flourT">Flour temp</label><div class="num"><input id="flourT" type="number" step="1" value="72"><i class="tu">°F</i></div></div>
     <div class="f"><label for="ddt">Target dough temp</label><div class="num"><input id="ddt" type="number" step="1" value="78"><i class="tu">°F</i></div></div>
     <div class="f"><label for="mixer">Mixing</label><div class="num"><select id="mixer"><option value="hand">By hand</option><option value="mixer">Stand mixer</option></select></div></div>
-    <div class="f dt" id="mixRow"><label for="mixAt">Mix time</label><div class="num"><input id="mixAt" type="time" value="09:00"></div><span class="hint" id="mixHint" style="text-align:left;font-family:var(--body)"></span></div>
+    <div class="f dt"><label for="mixAt">Mix time</label><div class="num"><input id="mixAt" type="time" value="09:00"></div></div>
   </fieldset>
   <div class="row2">
     <button type="button" class="btn" data-p="country">Country loaf</button>
@@ -266,19 +273,6 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
 
   <div class="two">
     <section>
-      <h2>My starter</h2>
-      <div class="card cardform">
-        <div class="f txt"><label for="stName">Name</label><div class="num"><input id="stName" type="text" maxlength="40" placeholder="e.g. Herman"></div></div>
-        <div class="f"><label for="stWW">Fed with whole wheat</label><div class="num"><input id="stWW" type="number" min="0" max="100" step="5" placeholder="0"><i>%</i></div></div>
-        <div class="f"><label for="stRye">Fed with rye</label><div class="num"><input id="stRye" type="number" min="0" max="100" step="5" placeholder="0"><i>%</i></div></div>
-        <p class="blendtxt" id="stBlend"></p>
-        <div class="f"><label for="scRatio">Usual feeding</label><div class="num"><select id="scRatio"><option value="1">1:1:1</option><option value="2">1:2:2</option><option value="3">1:3:3</option><option value="5">1:5:5</option><option value="10">1:10:10</option></select></div></div>
-        <div class="f dt"><label for="fedAt">Last fed</label><div class="num"><input id="fedAt" type="datetime-local"></div></div>
-        <div class="cardbtns"><button type="button" class="btn" id="mNew">I just fed it</button></div>
-        <p class="status" id="mStat"></p>
-      </div>
-    </section>
-    <section>
       <h2>Levain</h2>
       <div class="card cardform">
         <p class="blendtxt" id="lvFrom"></p>
@@ -286,25 +280,61 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
         <div class="f"><label for="lvRye">New flour: rye</label><div class="num"><input id="lvRye" type="number" min="0" max="100" step="5" placeholder="same"><i>%</i></div></div>
         <p class="blendtxt" id="lvBlend"></p>
         <div class="f"><label for="buildG">Build size<small>blank = the minimum</small></label><div class="num"><input id="buildG" type="number" min="0" step="10" placeholder="auto"><i>g</i></div></div>
-        <div class="f dt"><label for="lvAt">Built</label><div class="num"><input id="lvAt" type="datetime-local"></div></div>
-        <div class="cardbtns"><button type="button" class="btn" id="lvNew">I just built it</button></div>
         <dl class="kv" id="levKv"></dl>
+      </div>
+    </section>
+    <section>
+      <h2>Water temperature</h2>
+      <div class="card"><dl class="kv" id="ddtKv"></dl></div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Timeline</h2>
+    <div class="card"><ol class="sched" id="sched"></ol></div>
+  </section>
+
+  <section>
+    <h2>Suggestions</h2>
+    <ul class="notes" id="notes"></ul>
+  </section>
+
+  <p class="foot">Fermentation times are estimates from temperature, levain percentage and whole-grain content. Starters vary a lot, so read the dough: domed edges, a jiggly surface, bubbles on the sides and the target rise in the container matter more than the clock.</p>
+  <p class="credit">Developed by J. Andrew Duty, PhD</p>
+</div>
+</div>
+</div>
+<div id="viewStarter" hidden>
+<div class="out">
+  <div class="two">
+    <section>
+      <h2>My starter</h2>
+      <div class="card cardform">
+        <div class="f txt"><label for="stName">Name</label><div class="num"><input id="stName" type="text" maxlength="40" placeholder="e.g. Jean"></div></div>
+        <div class="f"><label for="stWW">Fed with whole wheat</label><div class="num"><input id="stWW" type="number" min="0" max="100" step="5" placeholder="0"><i>%</i></div></div>
+        <div class="f"><label for="stRye">Fed with rye</label><div class="num"><input id="stRye" type="number" min="0" max="100" step="5" placeholder="0"><i>%</i></div></div>
+        <p class="blendtxt" id="stBlend"></p>
+        <div class="f"><label for="stTemp">Kept at<small>blank = your room temp</small></label><div class="num"><input id="stTemp" type="number" step="1" placeholder="room"><i class="tu">°F</i></div></div>
+        <div class="f"><label for="scRatio">Usual feeding</label><div class="num"><select id="scRatio"><option value="1">1:1:1</option><option value="2">1:2:2</option><option value="3">1:3:3</option><option value="5">1:5:5</option><option value="10">1:10:10</option></select></div></div>
+        <div class="f dt"><label for="fedAt">Last fed</label><div class="num"><input id="fedAt" type="datetime-local"></div></div>
+        <div class="cardbtns"><button type="button" class="btn" id="mNew">I just fed it</button></div>
+        <p class="status" id="mStat"></p>
+      </div>
+    </section>
+    <section>
+      <h2>Feeding</h2>
+      <div class="card cardform">
+        <div class="f"><label for="keepG">Feed to make<small>how much starter you keep</small></label><div class="num"><input id="keepG" type="number" min="0" step="10" placeholder="100"><i>g</i></div></div>
+        <dl class="kv" id="feedKv"></dl>
+        <p class="status" id="feedNext"></p>
       </div>
     </section>
   </div>
 
   <section>
-    <h2>Water temperature</h2>
-    <div class="card"><dl class="kv" id="ddtKv"></dl></div>
-  </section>
-
-  <section>
     <h2>Starter check</h2>
     <div class="card">
       <div class="sc-top">
-        <div class="seg" role="group" aria-label="Which jar">
-          <button type="button" id="tgM" aria-pressed="true">Starter</button><button type="button" id="tgL" aria-pressed="false">Levain</button>
-        </div>
         <div class="seg" role="group" aria-label="How to measure">
           <button type="button" id="scBand" aria-pressed="true">Start line in photo</button><button type="button" id="scTwo" aria-pressed="false">Before &amp; after photos</button>
         </div>
@@ -330,22 +360,11 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
         <div class="sc-actions"><button type="button" class="btn" id="askAI" hidden>Ask Claude about this photo</button><button type="button" class="btn" id="logBtn" disabled>Log this check</button><span class="flash" id="logFlash" role="status"></span></div>
         <div class="ai" id="aiOut" hidden></div>
       </div>
-      <details class="sclog" id="scLog"><summary id="logSum">Log</summary><p id="logTxt"></p><p class="sc-note" id="logSync" style="margin:0 0 8px">Saved on this device.</p><div class="tblwrap"><table><thead><tr><th>When</th><th>Jar</th><th>Feed</th><th>Temp</th><th>Hours</th><th>Rise</th><th>Result</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div></details>
-      <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. Feeding times and before photos are kept for each jar, so you can close the app and come back later. The "now" photo isn't saved.<span id="aiNote"></span></p>
+      <details class="sclog" id="scLog"><summary id="logSum">Log</summary><p id="logTxt"></p><p class="sc-note" id="logSync" style="margin:0 0 8px">Saved on this device.</p><div class="tblwrap"><table><thead><tr><th>When</th><th>Feed</th><th>Temp</th><th>Hours</th><th>Rise</th><th>Result</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div></details>
+      <p class="sc-note">Tap lines are measured on the photo, so shoot the jar straight on from the side. The feeding time and before photo are kept, so you can close the app and come back later. The "now" photo isn't saved.<span id="aiNote"></span></p>
     </div>
   </section>
 
-  <section>
-    <h2>Timeline</h2>
-    <div class="card"><ol class="sched" id="sched"></ol></div>
-  </section>
-
-  <section>
-    <h2>Suggestions</h2>
-    <ul class="notes" id="notes"></ul>
-  </section>
-
-  <p class="foot">Fermentation times are estimates from temperature, levain percentage and whole-grain content. Starters vary a lot, so read the dough: domed edges, a jiggly surface, bubbles on the sides and the target rise in the container matter more than the clock.</p>
   <p class="credit">Developed by J. Andrew Duty, PhD</p>
 </div>
 </div>
@@ -481,19 +500,14 @@ function calc(){
 
   // Schedule
   const add=(d,h)=>new Date(d.getTime()+h*36e5);
-  // Anchor the plan: a levain that's already built sets the mix time; otherwise plan back from the Mix time field.
-  const fresh=fv=>{if(!fv)return null;const d=new Date(fv);const age=(Date.now()-d)/36e5;return isNaN(d)||age<0||age>48?null:d};
-  const lvD=fresh($('lvAt').value),mD=fresh($('fedAt').value),mpk=mPeak();
-  let mix,feed,mFeed,anchorBy='';
-  if(lvD){feed=lvD;mix=add(lvD,peak);mFeed=mD&&mD.getTime()<=lvD.getTime()?mD:add(lvD,-mpk);anchorBy='levain'}
-  else{const [hh,mm]=($('mixAt').value||'09:00').split(':').map(Number);mix=new Date();mix.setHours(hh,mm,0,0);feed=add(mix,-peak);mFeed=add(feed,-mpk)}
+  const [hh,mm]=($('mixAt').value||'09:00').split(':').map(Number);
+  const mix=new Date();mix.setHours(hh,mm,0,0);
+  const feed=add(mix,-peak),mFeed=add(feed,-mPeak());
   const autoly=add(mix,-0.75);
-  $('mixRow').classList.toggle('overridden',!!anchorBy);
-  $('mixHint').textContent=anchorBy==='levain'?`Following your levain: mix around ${fmtTime(mix)}${dayWord(mix)}. Clear the levain's Built time to plan by this field instead.`:'';
   const bulkEnd=add(mix,bulk), shape=add(bulkEnd,0.5), bake=add(shape,14);
   const ev=[
-    [mFeed,anchorBy==='levain'&&mD&&mD.getTime()<=feed.getTime()?`<b>Fed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value}`:`<b>Feed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value} so it peaks when you build the levain`],
-    [feed,`<b>${anchorBy==='levain'?'Built':'Build'} the levain</b> from ${esc(mName())}: ${g(seed)} ${esc(mName())} + ${flourList(nf)} + ${g(nw)} water`],
+    [mFeed,`<b>Feed ${esc(mName())}</b> at 1:${$('scRatio').value}:${$('scRatio').value} so it peaks when you build the levain`],
+    [feed,`<b>Build the levain</b> from ${esc(mName())}: ${g(seed)} ${esc(mName())} + ${flourList(nf)} + ${g(nw)} water`],
     [autoly,`<b>Autolyse</b> (optional): flour and water only, ${Math.round(wDisp)}°${unit} water`],
     ...(AI.some(x=>x.soak)?[[add(mix,-1),`<b>Soak</b> ${AI.filter(x=>x.soak).map(x=>x.l||x.n.toLowerCase()).join(' and ')} (see Suggestions)`]]:[]),
     [mix,`<b>Mix</b> in levain, then salt with the reserved water${(()=>{const m=AI.filter(x=>x.mix||x.split);return m.length?`, plus the ${m.map(x=>x.split?'grated half of the '+(x.l||x.n.toLowerCase()):(x.l||x.n.toLowerCase())).join(' and ')}`:''})()}`],
@@ -505,7 +519,7 @@ function calc(){
     [bake,`<b>Bake</b> 20 min lid on, then ${unit==='F'?'450°F':'230°C'} lid off 20–25 min`],
   ];
   const nowT=Date.now();
-  $('sched').innerHTML=ev.map(([d,t])=>{const tag=dayWord(d).replace(/^ /,'');return `<li${anchorBy&&d.getTime()<nowT-5*6e4?' class="done"':''}><time>${fmtTime(d)}${tag?`<small>${tag}</small>`:''}</time><p>${t}</p></li>`}).join('');
+  $('sched').innerHTML=ev.map(([d,t])=>{const tag=dayWord(d).replace(/^ /,'');return `<li><time>${fmtTime(d)}${tag?`<small>${tag}</small>`:''}</time><p>${t}</p></li>`}).join('');
 
   // Suggestions
   const N=[];const ok=(t,b)=>N.push(['',t,b]),warn=(t,b)=>N.push(['warn',t,b]);
@@ -555,12 +569,12 @@ function calc(){
   save();
 }
 
-const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','buildG','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt','stName','stWW','stRye','lvWW','lvRye','lvAt'];
+const ids=['ftype','prot','loaves','addF','totF','doughW','r1','hyd','lev','salt','wg','rye','sh','room','box','flourT','ddt','mixer','mixAt','r2','r3','buildG','a1t','a1p','a2t','a2p','a3t','a3p','scRatio','fedAt','stName','stWW','stRye','lvWW','lvRye','stTemp','keepG'];
 function save(){try{const o={unit,anchor,scTarget:TG};ids.forEach(i=>o[i]=$(i).value);localStorage.setItem('sd-v2',JSON.stringify(o))}catch(e){}try{setDirty()}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem('sd-v2')||'null');if(!o)return;ids.forEach(i=>{if(o[i]!=null)$(i).value=o[i]});setUnit(o.unit||'F',false);anchor=o.anchor||'doughW';if(o.scTarget==='levain')TG_LOAD='levain'}catch(e){}}
 
 function setUnit(u,convert=true){
-  if(convert&&u!==unit){['room','box','flourT','ddt'].forEach(i=>{if($(i).value.trim()==='')return;const v=val(i);$(i).value=Math.round(u==='F'?cToF(v):fToC(v))})}
+  if(convert&&u!==unit){['room','box','flourT','ddt','stTemp'].forEach(i=>{if($(i).value.trim()==='')return;const v=val(i);$(i).value=Math.round(u==='F'?cToF(v):fToC(v))})}
   unit=u;$('uC').setAttribute('aria-pressed',u==='C');$('uF').setAttribute('aria-pressed',u==='F');
   document.querySelectorAll('.tu').forEach(e=>e.textContent='°'+u);
 }
@@ -593,14 +607,15 @@ function blendTxt(b){const parts=[];if(b.ww>=0.005)parts.push(`${Math.round(b.ww
   return parts.length?`${Math.round((1-b.ww-b.rye)*100)}% white, ${parts.join(', ')}`:'All white flour'}
 function fermTempC(){return $('box').value.trim()!==''?toC(val('box')):toC(val('room'))}
 function baseModel(ratio,tC){return clamp((4+2.2*Math.log2(Math.max(1,ratio)))*Math.pow(2,(24-tC)/8),1.5,24)}
-function mPeak(){return clamp(baseModel(+$('scRatio').value||1,fermTempC())*masterBlend().f*scK().k,1,30)}
+function starterTempC(){return $('stTemp').value.trim()!==''?toC(val('stTemp')):toC(val('room'))}
+function mPeak(){return clamp(baseModel(+$('scRatio').value||1,starterTempC())*masterBlend().f*scK().k,1,30)}
 function clockAt(fv,h){if(!fv)return null;const d=new Date(new Date(fv).getTime()+h*36e5);return isNaN(d)?null:d}
 function fmtClock(d){return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+(new Date(d).toDateString()!==new Date().toDateString()?` ${d.toLocaleDateString([], {weekday:'short'})}`:'')}
 function sinceH(fv){if(!fv)return null;const h=(Date.now()-new Date(fv).getTime())/36e5;return h>=0&&h<72?h:null}
 function stShow(){
   const nm=mName(true),m=masterBlend();
+  $('navStarter').textContent=$('stName').value.trim()?nm:'Starter';$('hNow').textContent=`${nm} now`;try{feedCard()}catch(e){}
   $('stBlend').textContent=blendTxt(m)+(m.f<0.97?` · peaks about ${Math.round((1-m.f)*100)}% sooner than all-white`:'');
-  $('tgM').textContent=$('stName').value.trim()?nm:'Starter';
   const pk=mPeak(),fv=$('fedAt').value,el=sinceH(fv),st=$('mStat');st.textContent='';
   if(el==null){st.textContent=`At 1:${$('scRatio').value}:${$('scRatio').value} it usually peaks about ${hrs(pk)} after feeding. Tap "I just fed it" when you feed.`}
   else{const at=clockAt(fv,pk);st.append(`Fed ${hrs(el)} ago. `);const b=document.createElement('b');b.textContent=el<pk?`Peaks around ${fmtClock(at)}`:el<pk*1.4?'At or near peak now':'Probably past peak';st.append(b,'.')}
@@ -610,9 +625,33 @@ function lvCard(peak,rs,rf,rw){
   const c=lvComp(),rt=v=>r1(v).replace(/\.0$/,'');
   $('lvFrom').textContent=`Built from ${mName()} at ${rt(rs)}:${rt(rf)}:${rt(rw)} (set in Formula).`;
   $('lvBlend').textContent=`Levain flour: ${blendTxt(c)}${c.f<0.97?` · peaks about ${Math.round((1-c.f)*100)}% sooner than all-white`:''}.`;
-  const fv=$('lvAt').value,el=sinceH(fv);
-  if(el!=null){const at=clockAt(fv,peak);$('lvBlend').textContent+=el<peak?` Ready around ${fmtClock(at)}.`:el<peak*1.4?' At or near peak now.':' Probably past peak.'}
 }
+
+// ---------- Feeding card ----------
+function feedCard(){
+  const r=+$('scRatio').value||1,keep=$('keepG').value.trim()===''?100:Math.max(0,val('keepG'));
+  const st=keep/(1+2*r),fl=st*r,wa=st*r,b=masterBlend(),nm=mName(true);
+  const parts=[];const w=fl*(1-b.ww-b.rye);
+  if(w>=0.5)parts.push([$('ftype').value==='bread'||$('ftype').value==='bread2'?'Bread flour':'White flour',w]);if(fl*b.ww>=0.5)parts.push(['Whole wheat',fl*b.ww]);if(fl*b.rye>=0.5)parts.push(['Rye',fl*b.rye]);
+  $('feedKv').innerHTML=`<dt>Ratio</dt><dd>1 : ${r} : ${r}</dd><dt>${esc(nm)}</dt><dd>${g(st)}</dd><dt>Flour</dt><dd>${g(fl)}</dd>`+
+    (parts.length>1?parts.map(([n,v])=>`<dt class="sub">${n}</dt><dd class="sub">${g(v)}</dd>`).join(''):'')+
+    `<dt>Water</dt><dd>${g(wa)}</dd><dt>Makes</dt><dd>${g(keep)}</dd>`;
+  const pk=mPeak(),fv=$('fedAt').value,el=sinceH(fv),nx=$('feedNext');
+  const tTxt=`${Math.round(fromC(starterTempC()))}°${unit}`;
+  if(el==null){nx.textContent=`At 1:${r}:${r} and ${tTxt}, ${mName()} peaks about ${hrs(pk)} after feeding. On the counter, feed again around each peak; to slow it down, put it in the fridge within an hour of feeding.`;return}
+  const at=clockAt(fv,pk);
+  nx.textContent=el<pk?`Next peak around ${fmtClock(at)}. To keep it on the counter, feed again then. To pause it, put it in the fridge now (within an hour of feeding is best).`
+    :el<pk*1.4?'At or near peak now: a good time to feed again, build a levain, or bake with it.'
+    :`Past peak (fed ${hrs(el)} ago). Feed it soon, or put it in the fridge if you're not baking for a while.`;
+}
+function showView(v){
+  const st=v==='starter';$('viewBake').hidden=st;$('viewStarter').hidden=!st;
+  $('navBake').removeAttribute('aria-current');$('navStarter').removeAttribute('aria-current');
+  (st?$('navStarter'):$('navBake')).setAttribute('aria-current','page');
+  try{history.replaceState(null,'',st?'#starter':'#bake')}catch(e){}
+}
+const toTop=()=>{try{window.scrollTo(0,0)}catch(e){}};$('navBake').onclick=()=>{showView('bake');toTop()};$('navStarter').onclick=()=>{showView('starter');toTop()};
+window.addEventListener('hashchange',()=>showView(/^#?starter$/.test(location.hash)?'starter':'bake'));
 
 // ---------- Starter check (either jar) ----------
 let TG='master',TG_LOAD=null;
@@ -672,7 +711,6 @@ function scSetMode(m){const changed=SCT[TG].mode!==m;SC.mode=m;SCT[TG].mode=m;$(
   ['Now','Feed'].forEach(k=>scDraw(k));starterCheck();save()}
 function scTarget(t){
   TG=t==='levain'?'levain':'master';SC.shots=SCT[TG].shots;
-  $('tgM').setAttribute('aria-pressed',TG==='master');$('tgL').setAttribute('aria-pressed',TG==='levain');
   $('hFeed').textContent=TG==='levain'?'Right after building':'Right after feeding';
   $('hNow').textContent=TG==='levain'?'Levain now':`${mName(true)} now`;
   $('aiOut').hidden=true;SC.lastAI=null;scSetMode(SCT[TG].mode);feedNote();
@@ -692,7 +730,7 @@ function scSaveLog(){SCLOG=SCLOG.slice(-60);try{localStorage.setItem('sd-starter
 const SCSYNC={ref:null,busy:false,again:false,state:'local'};
 function scContext(){
   const rt=v=>r1(v).replace(/\.0$/,'');
-  const tC=fermTempC(),useBox=$('box').value.trim()!=='';const K=scK();
+  const tC=starterTempC(),useBox=false;const K=scK();
   let ratio,label,bf,fv,jar;
   if(TG==='levain'){const rs=Math.max(.1,val('r1')),rf=Math.max(.1,val('r2')),rw=Math.max(0,val('r3'));ratio=rf/rs;label=`${rt(rs)}:${rt(rf)}:${rt(rw)}`;bf=lvComp().f;fv=$('lvAt').value;jar='levain'}
   else{ratio=+$('scRatio').value||1;label=`1:${ratio}:${ratio}`;bf=masterBlend().f;fv=$('fedAt').value;jar='master'}
@@ -711,7 +749,7 @@ function starterCheck(){
   const v=$('scVerdict');if(!v)return;
   const R=scMeasure(),c=scContext();scSummary(c);
   const jarTxt=c.jar==='levain'?'the levain':mName();
-  const nextStep=c.jar==='levain'?'mix your dough':'build your levain';
+  const nextStep=c.jar==='levain'?'mix your dough':'feed it again, build a levain, or put it in the fridge';
   const tTxt=`${Math.round(fromC(c.tC))}°${unit}${c.useBox?' in the proofing box':''}`;
   const exp=c.K.n?`At ${c.label} and ${tTxt}, ${jarTxt} should peak about ${hrs(c.peak)} after ${c.jar==='levain'?'building':'feeding'} (adjusted from ${c.K.n} logged check${c.K.n>1?'s':''}).`:`At ${c.label} and ${tTxt}, ${jarTxt} usually peaks about ${hrs(c.peak)} after ${c.jar==='levain'?'building':'feeding'}.`;
   let pill='',cls='',big='',msg='';SC.last={rise:R,pill:''};
@@ -815,16 +853,14 @@ async function scAsk(){
   $('clr'+k).addEventListener('click',()=>{SC.shots[k].taps=[];scDraw(k);starterCheck();if(k==='Feed')saveFeed(TG,false)});
 });
 $('scBand').onclick=()=>{scSetMode('band');saveFeed(TG,false)};$('scTwo').onclick=()=>{scSetMode('two');saveFeed(TG,false)};
-$('tgM').onclick=()=>{scTarget('master');save()};$('tgL').onclick=()=>{scTarget('levain');save()};
 $('fedAt').addEventListener('change',()=>saveFeed('master',false));$('scRatio').addEventListener('change',()=>saveFeed('master',false));
-['lvAt','lvWW','lvRye'].forEach(id=>$(id).addEventListener('change',()=>saveFeed('levain',false)));
 function newRound(t){
   ['Now','Feed'].forEach(k=>{const sh=SCT[t].shots[k];if(sh.url&&sh.url.startsWith('blob:'))URL.revokeObjectURL(sh.url);sh.url=null;sh.file=null;sh.taps=[];if(t===TG)scDraw(k)});
   timeInput(t).value=toLocalInput(new Date());if(t===TG){$('aiOut').hidden=true;SC.lastAI=null}
   calc();saveFeed(t,true);feedNote();
   const f=$('logFlash');if(f){f.textContent=t==='levain'?'Levain build time set to now.':'Feeding time set to now.';setTimeout(()=>{f.textContent=''},4000)}
 }
-$('mNew').onclick=()=>newRound('master');$('lvNew').onclick=()=>newRound('levain');
+$('mNew').onclick=()=>newRound('master');
 $('askAI').onclick=scAsk;
 function scRenderLog(){
   const n=SCLOG.length;$('logSum').textContent=`Log (${n})`;$('scLog').hidden=!n;
@@ -834,7 +870,7 @@ function scRenderLog(){
   const body=$('logBody');body.innerHTML='';
   SCLOG.slice().reverse().slice(0,12).forEach(e=>{const tr=document.createElement('tr');
     const d=new Date(e.t);const cells=[d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}),
-      e.jar==='levain'?'Levain':mName(true),e.label||`1:${e.ratio}:${e.ratio}`,`${Math.round(fromC(e.tC))}°${unit}`,hrs(e.el),e.rise!=null?`${Math.round(e.rise*100)}%`:'—',e.result||''];
+      e.label||`1:${e.ratio}:${e.ratio}`,`${Math.round(fromC(e.tC))}°${unit}`,hrs(e.el),e.rise!=null?`${Math.round(e.rise*100)}%`:'—',e.result||''];
     cells.forEach(x=>{const td=document.createElement('td');td.textContent=x;tr.append(td)});
     const td=document.createElement('td');const b=document.createElement('button');b.className='x';b.type='button';b.textContent='×';b.setAttribute('aria-label','Remove this entry');
     b.onclick=()=>{SCLOG=SCLOG.filter(x=>x!==e);scSaveLog();scRenderLog();calc()};td.append(b);tr.append(td);body.append(tr)});
@@ -891,7 +927,7 @@ function applyFeed(t,meta,blob){
   if(t===TG)scSetMode(J.mode);
   calc();feedNote();
 }
-(async()=>{for(const t of ['master','levain']){const rec=await idbGet(FEEDKEY[t]);if(rec&&rec.meta&&(!SCT[t].meta||rec.meta.savedAt>SCT[t].meta.savedAt))applyFeed(t,rec.meta,rec.blob||null)}})();
+(async()=>{for(const t of ['master']){const rec=await idbGet(FEEDKEY[t]);if(rec&&rec.meta&&(!SCT[t].meta||rec.meta.savedAt>SCT[t].meta.savedAt))applyFeed(t,rec.meta,rec.blob||null)}})();
 
 // ---------- My starter: name and flour blend ----------
 const PROF={meta:null};
@@ -907,7 +943,7 @@ $('stName').addEventListener('input',()=>{if(TG==='master')$('hNow').textContent
 
 // ---------- Formula settings: sync to the account (Claude-hosted app only) ----------
 // Starter and levain fields sync with their own cards, so they're left out here.
-const SET_SKIP=new Set(['scRatio','fedAt','stName','stWW','stRye','lvWW','lvRye','lvAt']);
+const SET_SKIP=new Set(['scRatio','fedAt','stName','stWW','stRye']);
 const SETS={ready:false,last:'',lastObj:null,savedAt:0,timer:null};
 function setSnap(){const o={unit,anchor};ids.forEach(i=>{if(!SET_SKIP.has(i))o[i]=$(i).value});return o}
 function setInit(){const o=setSnap();SETS.lastObj=o;SETS.last=JSON.stringify(o);
@@ -972,14 +1008,14 @@ async function scInitSync(){
         const seen=new Set(cloud.map(e=>e.t));const merged=cloud.concat(SCLOG.filter(e=>!seen.has(e.t))).sort((a,b)=>a.t-b.t).slice(-60);
         SCLOG=merged;SCSYNC.ref=ref;SCSYNC.state='cloud';
         try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}
-        let pushed=mergeFeed('master',D.feed,true);pushed=mergeFeed('levain',D.feedLevain,true)||pushed;
+        let pushed=mergeFeed('master',D.feed,true);
         mergeSettings(D.settings,true);
         const cp=D.starter;
         if(cp&&typeof cp.savedAt==='number'&&(!PROF.meta||cp.savedAt>PROF.meta.savedAt))applyProf(cp);else if(PROF.meta&&(!cp||PROF.meta.savedAt>(cp.savedAt||0)))scPush();
         if(merged.length!==cloud.length&&!pushed)scPush();
       }else{
         SCLOG=cloud.slice(-60);SCSYNC.state='cloud';
-        mergeFeed('master',D.feed,false);mergeFeed('levain',D.feedLevain,false);
+        mergeFeed('master',D.feed,false);
         mergeSettings(D.settings,false);
         const cp=D.starter;if(cp&&typeof cp.savedAt==='number'&&(!PROF.meta||cp.savedAt>PROF.meta.savedAt))applyProf(cp);
         try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}
@@ -998,7 +1034,7 @@ scInitAI();
 document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
 // Scrolling over a focused number box shouldn't change its value
 document.querySelectorAll('input[type=number]').forEach(e=>e.addEventListener('wheel',()=>{if(document.activeElement===e)e.blur()},{passive:true}));
-load();prevT=[1,2,3].map(i=>$('a'+i+'t').value);calc();stShow();if(TG_LOAD==='levain')scTarget('levain');setInit();
+load();prevT=[1,2,3].map(i=>$('a'+i+'t').value);calc();stShow();setInit();showView(/^#?starter$/.test(location.hash)?'starter':'bake');
 </script>
 </body>
 </html>
