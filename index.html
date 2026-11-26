@@ -382,7 +382,7 @@ ol.sched p{margin:0;font-size:14px} ol.sched p b{font-weight:600}
     <div class="card">
       <p id="logTxt" style="margin:0 0 8px;font-size:14px"></p>
       <p class="sc-note" id="logSync" style="margin:0 0 4px">Saved on this device.</p>
-      <p class="sc-note" id="logDbg" style="margin:0 0 10px;opacity:.7">Build 39</p>
+      <p class="sc-note" id="logDbg" style="margin:0 0 10px;opacity:.7">Build 42</p>
       <div class="tblwrap"><table class="logtbl"><thead><tr><th>When</th><th>What</th><th>Since last feed</th><th>How it looked</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div>
     </div>
   </section>
@@ -757,14 +757,22 @@ function toLocalInput(d){const z=n=>String(n).padStart(2,'0');return `${d.getFul
 function timeInput(){return $('fedAt')}
 let SCLOG=[];try{SCLOG=JSON.parse(localStorage.getItem('sd-starter-log')||'[]')||[]}catch(e){SCLOG=[]}
 const SCSYNC={ref:null,busy:false,again:false,state:'local'};
-function dbg(m){const el=$('logDbg');if(el)el.textContent='Build 39 · '+m}
+const DBG=[];function lk(L){return (L||SCLOG).filter(e=>e.kind==='feed'&&!e.del).slice(-1).map(e=>(e.look||'blank')+(e.m?'*':'')).join('')}
+function dbg(m){const d=new Date();DBG.push(d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})+' '+m);while(DBG.length>6)DBG.shift();const el=$('logDbg');if(el)el.textContent='Build 42 · '+DBG.join(' → ')}
+// Entries merge one by one: whichever copy was changed last (m) wins, so an older copy coming back from the
+// account can never undo an answer or a delete made here. Deleted entries stay as {del:true} so they don't come back.
+function entM(e){return e.m||e.t}
+function mergeEntries(cloud,local){const M=new Map();let localWins=false;
+  cloud.forEach(e=>M.set(e.t,e));
+  local.forEach(e=>{const c=M.get(e.t);if(!c||entM(e)>entM(c)){M.set(e.t,e);localWins=true}});
+  return {list:[...M.values()].sort((a,b)=>a.t-b.t).slice(-80),localWins}}
 function scSaveLog(){SCLOG=SCLOG.slice(-80);SCSYNC.dirty=true;try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}if(SCSYNC.ref)scPush()}
 
 // Each reading says where the starter was some hours after a feed. Compared with the typical model for that
 // feed (ratio, temperature, flour), it becomes x = hours / typical peak hours:
 //   at peak -> a point estimate; still rising -> the peak is later (lower bound); past peak -> earlier (upper bound).
 function obsOf(e){
-  if(!e)return null;
+  if(!e||e.del)return null;
   if(e.kind==='feed'){if(!e.look||!e.prev||!(e.prev.el>0))return null;
     const x=e.prev.el/(baseModel(e.prev.ratio,e.prev.tC)*(e.prev.bf||1));
     return e.look==='peak'?{x,kind:'point'}:e.look==='rising'?{x,kind:'low'}:e.look==='past'?{x,kind:'high'}:null}
@@ -799,10 +807,10 @@ $('fedAt').addEventListener('change',saveFeed);$('scRatio').addEventListener('ch
 function feedNow(){
   const now=Date.now(),prevFv=$('fedAt').value,prevT=prevFv?new Date(prevFv).getTime():NaN;
   const r=+$('scRatio').value||1,tC=starterTempC(),bf=masterBlend().f;
-  const last=SCLOG.filter(e=>e.kind==='feed').slice(-1)[0],lastMatches=last&&!isNaN(prevT)&&Math.abs(last.t-prevT)<3*6e4;
+  const last=SCLOG.filter(e=>e.kind==='feed'&&!e.del).slice(-1)[0],lastMatches=last&&!isNaN(prevT)&&Math.abs(last.t-prevT)<3*6e4;
   const gap=(now-prevT)/36e5;
   const prev=!isNaN(prevT)&&gap>0.25&&gap<96?{el:gap,ratio:lastMatches?last.ratio:r,tC:lastMatches?last.tC:tC,bf:lastMatches?last.bf:bf}:null;
-  const e={t:now,kind:'feed',ratio:r,tC,bf,look:null,prev};
+  const e={t:now,m:now,kind:'feed',ratio:r,tC,bf,look:null,prev};
   SCLOG.push(e);scSaveLog();
   $('fedAt').value=toLocalInput(new Date(now));saveFeed();
   const box=$('lookAsk');
@@ -814,7 +822,7 @@ $('mNew').onclick=feedNow;
 $('lookAsk').addEventListener('click',ev=>{
   const b=ev.target.closest('button[data-look]');if(!b)return;
   const t=+$('lookAsk').dataset.t,e=SCLOG.find(x=>x.t===t);
-  if(e){e.look=b.dataset.look||null;scSaveLog()}
+  if(e){e.look=b.dataset.look||null;e.m=Date.now();scSaveLog()}
   $('lookAsk').hidden=true;scRenderLog();calc();
 });
 
@@ -831,7 +839,7 @@ function scRenderLog(force){
   if(!K.n)txt.textContent=`Tap "I just fed it" each time you feed. When it asks how ${mName()} looked, one tap teaches the app its real timing.`;
   else{const pct=Math.round(Math.abs(K.k-1)*100);txt.textContent=`From ${K.n} reading${K.n>1?'s':''}, ${mName()} peaks ${pct<5?'right about on the typical schedule':`about ${pct}% ${K.k<1?'sooner':'later'} than typical`}, after allowing for ratio, temperature and flour. Feeding times on this page use this.`}
   const body=$('logBody');body.innerHTML='';
-  SCLOG.slice().reverse().slice(0,20).forEach(e=>{
+  SCLOG.filter(e=>!e.del).reverse().slice(0,20).forEach(e=>{
     const tr=document.createElement('tr'),d=new Date(e.t);
     const td=x=>{const c=document.createElement('td');if(x instanceof Node)c.append(x);else c.textContent=x;tr.append(c);return c};
     td(d.toLocaleDateString([], {month:'short',day:'numeric'})+' '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
@@ -839,13 +847,13 @@ function scRenderLog(force){
       td(`Fed 1:${e.ratio}:${e.ratio}`);td(e.prev?hrs(e.prev.el):'—');
       if(e.prev){const sel=document.createElement('select');sel.setAttribute('aria-label','How it looked before this feed');
         [['','—'],['rising','Still rising'],['peak','At peak'],['past','Past peak']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;sel.append(o)});
-        sel.value=e.look||'';const pick=()=>{const x=SCLOG.find(y=>y.t===e.t),v=sel.value||null;dbg(`Picked "${v||'—'}" (${x?'entry found':'entry NOT found'}; sync ${SCSYNC.ref?'on':'off'})`);if(x&&x.look!==v){x.look=v;scSaveLog();calc()}};sel.addEventListener('change',pick);sel.addEventListener('input',pick);sel.addEventListener('blur',pick);td(sel)}else td('—');
+        sel.value=e.look||'';const pick=()=>{const x=SCLOG.find(y=>y.t===e.t),v=sel.value||null;dbg(`picked ${v||'blank'}${x?'':' (NOT FOUND)'}`);if(x&&x.look!==v){x.look=v;x.m=Date.now();scSaveLog();calc()}};sel.addEventListener('change',pick);sel.addEventListener('input',pick);sel.addEventListener('blur',pick);td(sel)}else td('—');
     }else if(e.kind==='ai'){td('Claude check');td(hrs(e.el));td(STG[e.stage]||e.stage||'—')}
     else{td('Photo check');td(e.el?hrs(e.el):'—');td(e.result||'—')}
     const b=document.createElement('button');b.className='x';b.type='button';b.textContent='×';b.setAttribute('aria-label','Remove this entry');
-    b.onclick=()=>{SCLOG=SCLOG.filter(x=>x.t!==e.t);scSaveLog();scRenderLog(true);calc()};td(b);
+    b.onclick=()=>{const x=SCLOG.find(y=>y.t===e.t);if(x){x.del=true;x.m=Date.now()}scSaveLog();scRenderLog(true);calc()};td(b);
     body.append(tr)});
-  if(!SCLOG.length){const tr=document.createElement('tr');const c=document.createElement('td');c.colSpan=5;c.style.color='var(--muted)';c.textContent='No feeds logged yet.';tr.append(c);body.append(tr)}
+  if(!SCLOG.some(e=>!e.del)){const tr=document.createElement('tr');const c=document.createElement('td');c.colSpan=5;c.style.color='var(--muted)';c.textContent='No feeds logged yet.';tr.append(c);body.append(tr)}
 }
 
 // ----- Claude photo check (Claude-hosted app only) -----
@@ -928,7 +936,7 @@ async function scAsk(){
     if(r.advice){const a=document.createElement('p');a.style.marginTop='8px';a.textContent=String(r.advice);out.append(a)}
     const ca=Number(r.check_again_hours);if(r.action==='wait'&&ca>0&&ca<24){const q=document.createElement('p');q.style.cssText='margin-top:6px;color:var(--muted);font-size:13px';q.textContent=`Check again in about ${hrs(ca)}.`;out.append(q)}
     // Claude's read becomes a timing reading in the log
-    if(SC.lastAI&&c.el!=null){SCLOG.push({t:Date.now(),kind:'ai',stage:SC.lastAI,el:c.el,ratio:c.ratio,tC:c.tC,bf:c.bf});scSaveLog();scRenderLog();calc();
+    if(SC.lastAI&&c.el!=null){SCLOG.push({t:Date.now(),m:Date.now(),kind:'ai',stage:SC.lastAI,el:c.el,ratio:c.ratio,tC:c.tC,bf:c.bf});scSaveLog();scRenderLog();calc();
       const n=document.createElement('p');n.style.cssText='margin-top:6px;color:var(--rye);font-size:13px';n.textContent=`Added to ${mName()}'s log; the feeding times now take it into account.`;out.append(n)}
   }catch(e){
     const code=e&&e.code;
@@ -990,7 +998,7 @@ function scSyncNote(){const el=$('logSync');if(!el)return;
 async function scPush(){
   if(!SCSYNC.ref)return;if(SCSYNC.busy){SCSYNC.again=true;return}
   SCSYNC.busy=true;
-  try{do{SCSYNC.again=false;SCSYNC.dirty=false;const _lk=SCLOG.map(e=>e.look===undefined?'':(e.look||'—')).join(',');await SCSYNC.ref.set({entries:SCLOG.slice(-60),feed:FEED.meta||null,starter:PROF.meta||null,settings:SETS.ready&&SETS.savedAt?{savedAt:SETS.savedAt,values:SETS.lastObj}:null,updated:Date.now()});dbg('Saved to your account: '+_lk)}while(SCSYNC.again)}
+  try{do{SCSYNC.again=false;SCSYNC.dirty=false;const _lk=SCLOG.filter(e=>!e.del).map(e=>e.look===undefined?'':(e.look||'—')).join(',');await SCSYNC.ref.set({entries:SCLOG.slice(-80),feed:FEED.meta||null,starter:PROF.meta||null,settings:SETS.ready&&SETS.savedAt?{savedAt:SETS.savedAt,values:SETS.lastObj}:null,updated:Date.now()});dbg('saved '+lk())}while(SCSYNC.again)}
   catch(e){dbg('Save failed: '+((e&&(e.code||e.message))||e));if(e&&e.code==='quota_exceeded'){const f=$('logFlash');if(f)f.textContent='Your Claude account log is full; older entries will be trimmed.'}
     else if(e&&(e.code==='revoked'||e.code==='not_granted'||e.code==='invalid_argument')){SCSYNC.ref=null;SCSYNC.state='local';scSyncNote()}}
   finally{SCSYNC.busy=false}
@@ -1013,23 +1021,24 @@ async function scInitSync(){
     const timer=setTimeout(()=>{if(SCSYNC.state==='waiting'){SCSYNC.state='offline';scSyncNote()}},10000);
     ref.onSnapshot(snap=>{
       if(snap.metadata&&snap.metadata.hasPendingWrites)return;
-      const D=snap.exists?(snap.data()||{}):{};
+      // the account hands back read-only (frozen) objects; copy them so answers and edits can be written onto them
+      let D={};try{D=snap.exists?JSON.parse(JSON.stringify(snap.data()||{})):{}}catch(e){D={}}
       const cloud=Array.isArray(D.entries)?D.entries.filter(e=>e&&typeof e.t==='number'):[];
       if(first){
         if(snap.metadata&&snap.metadata.fromCache&&!cloud.length)return; // wait for the store's answer before merging
         first=false;clearTimeout(timer);
         // First connection: merge this device's entries into the account's log
-        const seen=new Set(cloud.map(e=>e.t));const merged=cloud.concat(SCLOG.filter(e=>!seen.has(e.t))).sort((a,b)=>a.t-b.t).slice(-60);
+        const mg=mergeEntries(cloud,SCLOG),merged=mg.list;
         SCLOG=merged;SCSYNC.ref=ref;SCSYNC.state='cloud';
         try{localStorage.setItem('sd-starter-log',JSON.stringify(SCLOG))}catch(e){}
         let pushed=mergeFeed('master',D.feed,true);
         mergeSettings(D.settings,true);
         const cp=D.starter;
         if(cp&&typeof cp.savedAt==='number'&&(!PROF.meta||cp.savedAt>PROF.meta.savedAt))applyProf(cp);else if(PROF.meta&&(!cp||PROF.meta.savedAt>(cp.savedAt||0)))scPush();
-        if(merged.length!==cloud.length&&!pushed)scPush();
+        if(mg.localWins&&!pushed)scPush();
       }else{
         // a change made here is still on its way up; don't let an older copy from the account overwrite it
-        if(!SCSYNC.busy&&!SCSYNC.dirty)SCLOG=cloud.slice(-60);SCSYNC.state='cloud';
+        const mg=mergeEntries(cloud,SCLOG);dbg('from account '+lk(cloud)+' kept '+lk(mg.list)+(snap.metadata&&snap.metadata.hasPendingWrites?' (pending)':''));SCLOG=mg.list;SCSYNC.state='cloud';if(mg.localWins)scPush();
         mergeFeed('master',D.feed,false);
         mergeSettings(D.settings,false);
         const cp=D.starter;if(cp&&typeof cp.savedAt==='number'&&(!PROF.meta||cp.savedAt>PROF.meta.savedAt))applyProf(cp);
